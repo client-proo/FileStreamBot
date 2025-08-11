@@ -38,7 +38,7 @@ async def sts(b, m: Message):
             if not str(id).startswith('-100'):
                 await b.send_message(
                     chat_id=id,
-                    text="**شما از استفاده از ربات مسدود شده‌اید**",
+                    text="**حساب کاربری شما مسدود شده است**",
                     parse_mode=ParseMode.MARKDOWN,
                     disable_web_page_preview=True
                 )
@@ -54,11 +54,11 @@ async def sts(b, m: Message):
     if await db.is_user_banned(int(id)):
         try:
             await db.unban_user(int(id))
-            await m.reply_text(text=f"`{id}`** is Unbanned** ", parse_mode=ParseMode.MARKDOWN, quote=True)
+            await m.reply_text(text=f"`{id}`** مسدودیت با موفقیت برداشته شد** ", parse_mode=ParseMode.MARKDOWN, quote=True)
             if not str(id).startswith('-100'):
                 await b.send_message(
                     chat_id=id,
-                    text="**مسدودی شما برداشته شد. می‌توانید از ربات استفاده کنید**",
+                    text="**مسدودیت شما برداشته شد. می‌توانید از ربات استفاده کنید**",
                     parse_mode=ParseMode.MARKDOWN,
                     disable_web_page_preview=True
                 )
