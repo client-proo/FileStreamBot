@@ -44,7 +44,7 @@ async def cb_data(bot, update: CallbackQuery):
         await update.message.delete()
     elif usr_cmd[0] == "msgdelete":
         await update.message.edit_caption(
-        caption= "**Cᴏɴғɪʀᴍ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴅᴇʟᴇᴛᴇ ᴛʜᴇ Fɪʟᴇ**\n\n",
+        caption= "**آیا می‌خواهید فایل را حذف کنید؟**\n\n",
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ʏᴇs", callback_data=f"msgdelyes_{usr_cmd[1]}_{usr_cmd[2]}"), InlineKeyboardButton("ɴᴏ", callback_data=f"myfile_{usr_cmd[1]}_{usr_cmd[2]}")]])
     )
     elif usr_cmd[0] == "msgdelyes":
@@ -52,7 +52,7 @@ async def cb_data(bot, update: CallbackQuery):
         return
     elif usr_cmd[0] == "msgdelpvt":
         await update.message.edit_caption(
-        caption= "**Cᴏɴғɪʀᴍ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴅᴇʟᴇᴛᴇ ᴛʜᴇ Fɪʟᴇ**\n\n",
+        caption= "**آیا می‌خواهید فایل را حذف کنید؟**\n\n",
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ʏᴇs", callback_data=f"msgdelpvtyes_{usr_cmd[1]}"), InlineKeyboardButton("ɴᴏ", callback_data=f"mainstream_{usr_cmd[1]}")]])
     )
     elif usr_cmd[0] == "msgdelpvtyes":
@@ -114,7 +114,7 @@ async def gen_file_menu(_id, file_list_no, update: CallbackQuery):
     try:
         myfile_info=await db.get_file(_id)
     except FIleNotFound:
-        await update.answer("File Not Found")
+        await update.answer("فایل پیدا نشد")
         return
 
     file_id=FileId.decode(myfile_info['file_id'])
@@ -171,13 +171,13 @@ async def delete_user_file(_id, file_list_no: int, update:CallbackQuery):
     try:
         myfile_info=await db.get_file(_id)
     except FIleNotFound:
-        await update.answer("File Already Deleted")
+        await update.answer("فایل قبلاً حذف شده است")
         return
 
     await db.delete_one_file(myfile_info['_id'])
     await db.count_links(update.from_user.id, "-")
     await update.message.edit_caption(
-            caption= "**Fɪʟᴇ Dᴇʟᴇᴛᴇᴅ Sᴜᴄᴄᴇssғᴜʟʟʏ !**" + update.message.caption.replace("Cᴏɴғɪʀᴍ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴅᴇʟᴇᴛᴇ ᴛʜᴇ Fɪʟᴇ", ""),
+            caption= "**فایل با موفقیت حذف شد !**" + update.message.caption.replace("آیا می‌خواهید فایل را حذف کنید؟", ""),
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ʙᴀᴄᴋ", callback_data=f"userfiles_1")]])
         )
 
@@ -186,13 +186,13 @@ async def delete_user_filex(_id, update:CallbackQuery):
     try:
         myfile_info=await db.get_file(_id)
     except FIleNotFound:
-        await update.answer("File Already Deleted")
+        await update.answer("فایل قبلاً حذف شده است")
         return
 
     await db.delete_one_file(myfile_info['_id'])
     await db.count_links(update.from_user.id, "-")
     await update.message.edit_caption(
-            caption= "**Fɪʟᴇ Dᴇʟᴇᴛᴇᴅ Sᴜᴄᴄᴇssғᴜʟʟʏ !**\n\n",
+            caption= "**فایل با موفقیت حذف شد !**\n\n",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✖️ بستن", callback_data=f"close")]])
         )
 
