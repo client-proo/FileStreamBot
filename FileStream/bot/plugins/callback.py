@@ -45,7 +45,7 @@ async def cb_data(bot, update: CallbackQuery):
     elif usr_cmd[0] == "msgdelete":
         await update.message.edit_caption(
         caption= "**آیا می‌خواهید فایل را حذف کنید؟**\n\n",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ʏᴇs", callback_data=f"msgdelyes_{usr_cmd[1]}_{usr_cmd[2]}"), InlineKeyboardButton("ɴᴏ", callback_data=f"myfile_{usr_cmd[1]}_{usr_cmd[2]}")]])
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("بله", callback_data=f"msgdelyes_{usr_cmd[1]}_{usr_cmd[2]}"), InlineKeyboardButton("خیر", callback_data=f"myfile_{usr_cmd[1]}_{usr_cmd[2]}")]])
     )
     elif usr_cmd[0] == "msgdelyes":
         await delete_user_file(usr_cmd[1], int(usr_cmd[2]), update)
