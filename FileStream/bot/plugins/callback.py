@@ -139,19 +139,19 @@ async def gen_file_menu(_id, file_list_no, update: CallbackQuery):
     if "video" in file_type.lower():
         MYFILES_BUTTONS = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("sᴛʀᴇᴀᴍ", url=page_link), InlineKeyboardButton("ᴅᴏᴡɴʟᴏᴀᴅ", url=stream_link)],
-                [InlineKeyboardButton("ɢᴇᴛ ғɪʟᴇ", callback_data=f"sendfile_{myfile_info['_id']}"),
-                 InlineKeyboardButton("ʀᴇᴠᴏᴋᴇ ғɪʟᴇ", callback_data=f"msgdelete_{myfile_info['_id']}_{file_list_no}")],
-                [InlineKeyboardButton("ʙᴀᴄᴋ", callback_data="userfiles_{}".format(file_list_no))]
+                [InlineKeyboardButton("🖥️ پخش آنلاین", url=page_link), InlineKeyboardButton("📥 دانلود", url=stream_link)],
+                [InlineKeyboardButton("📂 دریافت فایل", callback_data=f"sendfile_{myfile_info['_id']}"),
+                 InlineKeyboardButton("🗑 حذف فایل", callback_data=f"msgdelete_{myfile_info['_id']}_{file_list_no}")],
+                [InlineKeyboardButton("🔙 برگشت", callback_data="userfiles_{}".format(file_list_no))]
             ]
         )
     else:
         MYFILES_BUTTONS = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("ᴅᴏᴡɴʟᴏᴀᴅ", url=stream_link)],
-                [InlineKeyboardButton("ɢᴇᴛ ғɪʟᴇ", callback_data=f"sendfile_{myfile_info['_id']}"),
-                 InlineKeyboardButton("ʀᴇᴠᴏᴋᴇ ғɪʟᴇ", callback_data=f"msgdelete_{myfile_info['_id']}_{file_list_no}")],
-                [InlineKeyboardButton("ʙᴀᴄᴋ", callback_data="userfiles_{}".format(file_list_no))]
+                [InlineKeyboardButton("📥 دانلود", url=stream_link)],
+                [InlineKeyboardButton("📂 دریافت فایل", callback_data=f"sendfile_{myfile_info['_id']}"),
+                 InlineKeyboardButton("🗑 حذف فایل", callback_data=f"msgdelete_{myfile_info['_id']}_{file_list_no}")],
+                [InlineKeyboardButton("🔙 برگشت", callback_data="userfiles_{}".format(file_list_no))]
             ]
         )
 
