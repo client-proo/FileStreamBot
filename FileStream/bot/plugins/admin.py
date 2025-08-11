@@ -34,18 +34,18 @@ async def sts(b, m: Message):
         try:
             await db.ban_user(int(id))
             await db.delete_user(int(id))
-            await m.reply_text(text=f"`{id}`** is Banned** ", parse_mode=ParseMode.MARKDOWN, quote=True)
+            await m.reply_text(text=f"`{id}`** مسدود شده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
             if not str(id).startswith('-100'):
                 await b.send_message(
                     chat_id=id,
-                    text="**Your Banned to Use The Bot**",
+                    text="**شما از استفاده از ربات مسدود شده‌اید**",
                     parse_mode=ParseMode.MARKDOWN,
                     disable_web_page_preview=True
                 )
         except Exception as e:
-            await m.reply_text(text=f"**something went wrong: {e}** ", parse_mode=ParseMode.MARKDOWN, quote=True)
+            await m.reply_text(text=f"**عملیات با خطا مواجه شد: {e}** ", parse_mode=ParseMode.MARKDOWN, quote=True)
     else:
-        await m.reply_text(text=f"`{id}`** is Already Banned** ", parse_mode=ParseMode.MARKDOWN, quote=True)
+        await m.reply_text(text=f"`{id}`** قبلاً مسدود شده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
 
 
 @FileStream.on_message(filters.command("unban") & filters.private & filters.user(Telegram.OWNER_ID))
@@ -58,14 +58,14 @@ async def sts(b, m: Message):
             if not str(id).startswith('-100'):
                 await b.send_message(
                     chat_id=id,
-                    text="**Your Unbanned now Use can use The Bot**",
+                    text="**مسدودی شما برداشته شد. می‌توانید از ربات استفاده کنید**",
                     parse_mode=ParseMode.MARKDOWN,
                     disable_web_page_preview=True
                 )
         except Exception as e:
-            await m.reply_text(text=f"** something went wrong: {e}**", parse_mode=ParseMode.MARKDOWN, quote=True)
+            await m.reply_text(text=f"** عملیات با خطا مواجه شد: {e}**", parse_mode=ParseMode.MARKDOWN, quote=True)
     else:
-        await m.reply_text(text=f"`{id}`** is not Banned** ", parse_mode=ParseMode.MARKDOWN, quote=True)
+        await m.reply_text(text=f"`{id}`** مسدود نشده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
 
 
 @FileStream.on_message(filters.command("broadcast") & filters.private & filters.user(Telegram.OWNER_ID) & filters.reply)
@@ -145,14 +145,14 @@ async def sts(c: Client, m: Message):
         file_info = await db.get_file(file_id)
     except FIleNotFound:
         await m.reply_text(
-            text=f"**ꜰɪʟᴇ ᴀʟʀᴇᴀᴅʏ ᴅᴇʟᴇᴛᴇᴅ**",
+            text=f"**فایل قبلاً حذف شده است**",
             quote=True
         )
         return
     await db.delete_one_file(file_info['_id'])
     await db.count_links(file_info['user_id'], "-")
     await m.reply_text(
-        text=f"**Fɪʟᴇ Dᴇʟᴇᴛᴇᴅ Sᴜᴄᴄᴇssғᴜʟʟʏ !** ",
+        text=f"**فایل با موفقیت حذف شد !** ",
         quote=True
     )
 
