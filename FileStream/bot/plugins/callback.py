@@ -178,7 +178,7 @@ async def delete_user_file(_id, file_list_no: int, update:CallbackQuery):
     await db.count_links(update.from_user.id, "-")
     await update.message.edit_caption(
             caption= "**فایل با موفقیت حذف شد !**" + update.message.caption.replace("آیا می‌خواهید فایل را حذف کنید؟", ""),
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ʙᴀᴄᴋ", callback_data=f"userfiles_1")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 برگشت", callback_data=f"userfiles_1")]])
         )
 
 async def delete_user_filex(_id, update:CallbackQuery):
