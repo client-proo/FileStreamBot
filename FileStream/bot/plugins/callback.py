@@ -193,6 +193,6 @@ async def delete_user_filex(_id, update:CallbackQuery):
     await db.count_links(update.from_user.id, "-")
     await update.message.edit_caption(
             caption= "**Fɪʟᴇ Dᴇʟᴇᴛᴇᴅ Sᴜᴄᴄᴇssғᴜʟʟʏ !**\n\n",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ᴄʟᴏsᴇ", callback_data=f"close")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✖️ بستن", callback_data=f"close")]])
         )
 
