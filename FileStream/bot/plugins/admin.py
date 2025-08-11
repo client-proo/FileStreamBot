@@ -21,9 +21,9 @@ broadcast_ids = {}
 
 @FileStream.on_message(filters.command("status") & filters.private & filters.user(Telegram.OWNER_ID))
 async def sts(c: Client, m: Message):
-    await m.reply_text(text=f"""**Total Users in DB:** `{await db.total_users_count()}`
-**Banned Users in DB:** `{await db.total_banned_users_count()}`
-**Total Links Generated: ** `{await db.total_files()}`"""
+    await m.reply_text(text=f"""**👥 کل کاربران:** `{await db.total_users_count()}`
+**🚫 کاربران مسدود شده:** `{await db.total_banned_users_count()}`
+**🔗 لینک‌های تولید شده: ** `{await db.total_files()}`"""
                        , parse_mode=ParseMode.MARKDOWN, quote=True)
 
 
