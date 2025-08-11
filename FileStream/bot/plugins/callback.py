@@ -106,7 +106,7 @@ async def gen_file_list_button(file_list_no: int, user_id: int):
         )
     if not file_list:
         file_list.append(
-                [InlineKeyboardButton("🚫 خالی", callback_data="N/A")])
+                [InlineKeyboardButton("📭 خالی", callback_data="N/A")])
     file_list.append([InlineKeyboardButton("✖️ بستن", callback_data="close")])
     return file_list, total_files
 
