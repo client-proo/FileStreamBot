@@ -104,7 +104,7 @@ async def gen_link(_id):
             [
                 [InlineKeyboardButton("📥 دانلود", url=stream_link)],
                 [InlineKeyboardButton("📂 دریافت فایل", url=file_link), InlineKeyboardButton("🗑 حذف فایل", callback_data=f"msgdelpvt_{_id}")],
-                [InlineKeyboardButton("ᴄʟᴏsᴇ", callback_data="✖️ بستن")]
+                [InlineKeyboardButton("✖️ بستن", callback_data="close")]
             ]
         )
     return reply_markup, stream_text
