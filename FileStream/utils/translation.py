@@ -47,7 +47,7 @@ class BUTTON(object):
         [[
             InlineKeyboardButton('ʜᴇʟᴘ', callback_data='help'),
             InlineKeyboardButton('ᴀʙᴏᴜᴛ', callback_data='about'),
-            InlineKeyboardButton('ᴄʟᴏsᴇ', callback_data='close')
+            InlineKeyboardButton('✖️ بستن', callback_data='close')
         ],
             [InlineKeyboardButton("📢 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ", url=f'https://t.me/{Telegram.UPDATES_CHANNEL}')]
         ]
@@ -56,7 +56,7 @@ class BUTTON(object):
         [[
             InlineKeyboardButton('ʜᴏᴍᴇ', callback_data='home'),
             InlineKeyboardButton('ᴀʙᴏᴜᴛ', callback_data='about'),
-            InlineKeyboardButton('ᴄʟᴏsᴇ', callback_data='close'),
+            InlineKeyboardButton('✖️ بستن', callback_data='close'),
         ],
             [InlineKeyboardButton("📢 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ", url=f'https://t.me/{Telegram.UPDATES_CHANNEL}')]
         ]
@@ -65,7 +65,7 @@ class BUTTON(object):
         [[
             InlineKeyboardButton('ʜᴏᴍᴇ', callback_data='home'),
             InlineKeyboardButton('ʜᴇʟᴘ', callback_data='help'),
-            InlineKeyboardButton('ᴄʟᴏsᴇ', callback_data='close'),
+            InlineKeyboardButton('✖️ بستن', callback_data='close'),
         ],
             [InlineKeyboardButton("📢 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ", url=f'https://t.me/{Telegram.UPDATES_CHANNEL}')]
         ]
