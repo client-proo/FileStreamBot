@@ -72,7 +72,7 @@ async def cb_data(bot, update: CallbackQuery):
     elif usr_cmd[0] == "userfiles":
         file_list, total_files = await gen_file_list_button(int(usr_cmd[1]), update.from_user.id)
         await update.message.edit_caption(
-            caption="🗂 تعداد کل فایل ها: {}".format(total_files),
+            caption="Total files: {}".format(total_files),
             reply_markup=InlineKeyboardMarkup(file_list)
             )
     elif usr_cmd[0] == "myfile":
