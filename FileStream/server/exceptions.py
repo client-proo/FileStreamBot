@@ -1,5 +1,5 @@
 class InvalidHash(Exception):
-    message = "Invalid hash"
+    message = "هش نامعتبر"
 
 class FIleNotFound(Exception):
-    message = "File not found"
+    message = "فایل پیدا نشد"
