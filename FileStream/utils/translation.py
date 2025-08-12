@@ -4,7 +4,7 @@ from FileStream.config import Telegram
 class LANG(object):
 
     START_TEXT = """
-<b>👋 سلام, </b>\n 
+<b>👋 سلام, </b>{}\n 
 <b>🔗 برای دریافت لینک دانلود مستقیم، فایل مورد نظر رو واسه ربات فوروارد کن</b>\n"""
 
     HELP_TEXT = """
@@ -15,10 +15,10 @@ class LANG(object):
 <i><b> هر مشکلی داشتی به <i><b><a href='https://telegram.me/mahdi79230'>توسعه‌دهنده</a></b></i> گزارش بده!"""
 
     ABOUT_TEXT = """
-<b>⚜ ᴍʏ ɴᴀᴍᴇ : {}</b>\n
-<b>✦ ᴠᴇʀsɪᴏɴ : {}</b>
-<b>✦ ᴜᴘᴅᴀᴛᴇᴅ ᴏɴ : 06-January-2024</b>
-<b>✦ ᴅᴇᴠᴇʟᴏᴘᴇʀ : <a href='https://telegram.me/AvishkarPatil'>Avishkar Patil</a></b>\n
+<b>⚜ نام ربات : {}</b>\n
+<b>✦ نسخه : {}</b>
+<b>✦ آخرین بروزرسانی : ۲۱-مرداد-۱۴۰۴</b>
+<b>✦ توسعه دهنده : <a href='https://telegram.me/mahdi79230'>☬ 𐎶𐏃𐎭𐎴 ☬</a></b>\n
 """
 
     STREAM_TEXT = """
