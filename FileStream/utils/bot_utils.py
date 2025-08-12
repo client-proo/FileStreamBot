@@ -44,20 +44,20 @@ async def is_user_joined(bot, message: Message):
         if Telegram.VERIFY_PIC:
             ver = await message.reply_photo(
                 photo=Telegram.VERIFY_PIC,
-                caption="<b>⚠️ <i>عضویت اجباری در کانال</i> ⚠️</b>\n\nبرای استفاده از ربات، لطفاً ابتدا <i><b>عضو کانال<b></i> شوید.\n\nپس از <b><i>عضویت</i></b>، دوباره امتحان کنید.",
+                caption="<b>⚠️ <i>عضویت اجباری در کانال</i> ⚠️</b>\n\nبرای استفاده از ربات، لطفاً ابتدا <b><i>عضو کانال</i></b> شوید.\n\nپس از <b><i>عضویت</i></b>، دوباره امتحان کنید.",
                 parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup(
                 [[
-                    InlineKeyboardButton("❆ Jᴏɪɴ Oᴜʀ Cʜᴀɴɴᴇʟ ❆", url=invite_link.invite_link)
+                    InlineKeyboardButton("LinkBolt channel", url=invite_link.invite_link)
                 ]]
                 )
             )
         else:
             ver = await message.reply_text(
-                text = "<b>⚠️ <i>عضویت اجباری در کانال</i> ⚠️</b>\n\nبرای استفاده از ربات، لطفاً ابتدا <i><b>عضو کانال<b></i> شوید.\n\nپس از <b><i>عضویت</i></b>، دوباره امتحان کنید.",
+                text = "<b>⚠️ <i>عضویت اجباری در کانال</i> ⚠️</b>\n\nبرای استفاده از ربات، لطفاً ابتدا <b><i>عضو کانال</i></b> شوید.\n\nپس از <b><i>عضویت</i></b>، دوباره امتحان کنید.",
                 reply_markup=InlineKeyboardMarkup(
                     [[
-                        InlineKeyboardButton("❆ Jᴏɪɴ Oᴜʀ Cʜᴀɴɴᴇʟ ❆", url=invite_link.invite_link)
+                        InlineKeyboardButton("LinkBolt channel", url=invite_link.invite_link)
                     ]]
                 ),
                 parse_mode=ParseMode.HTML
