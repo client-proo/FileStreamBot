@@ -53,7 +53,7 @@ async def cb_data(bot, update: CallbackQuery):
     elif usr_cmd[0] == "msgdelpvt":
         await update.message.edit_caption(
         caption= "**آیا می‌خواهید فایل را حذف کنید؟**\n\n",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ʏᴇs", callback_data=f"msgdelpvtyes_{usr_cmd[1]}"), InlineKeyboardButton("ɴᴏ", callback_data=f"mainstream_{usr_cmd[1]}")]])
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("بله", callback_data=f"msgdelpvtyes_{usr_cmd[1]}"), InlineKeyboardButton("خیر", callback_data=f"mainstream_{usr_cmd[1]}")]])
     )
     elif usr_cmd[0] == "msgdelpvtyes":
         await delete_user_filex(usr_cmd[1], update)
