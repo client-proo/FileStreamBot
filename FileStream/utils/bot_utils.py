@@ -188,7 +188,7 @@ async def is_user_exist(bot, message):
         await db.add_user(message.from_user.id)
         await bot.send_message(
             Telegram.ULOG_CHANNEL,
-            f"**#NᴇᴡUsᴇʀ**\n**⬩ ᴜsᴇʀ ɴᴀᴍᴇ :** [{message.from_user.first_name}](tg://user?id={message.from_user.id})\n**⬩ ᴜsᴇʀ ɪᴅ :** `{message.from_user.id}`"
+            f"**✨ کاربر جدید اضافه شد! ✨**\n**👤 نام کاربر :** [{message.from_user.first_name}](tg://user?id={message.from_user.id})\n**🆔 آیدی کاربر :** `{message.from_user.id}`"
         )
 
 async def is_channel_exist(bot, message):
@@ -197,7 +197,7 @@ async def is_channel_exist(bot, message):
         members = await bot.get_chat_members_count(message.chat.id)
         await bot.send_message(
             Telegram.ULOG_CHANNEL,
-            f"**#NᴇᴡCʜᴀɴɴᴇʟ** \n**⬩ ᴄʜᴀᴛ ɴᴀᴍᴇ :** `{message.chat.title}`\n**⬩ ᴄʜᴀᴛ ɪᴅ :** `{message.chat.id}`\n**⬩ ᴛᴏᴛᴀʟ ᴍᴇᴍʙᴇʀs :** `{members}`"
+            f"**✨ کانال جدید اضافه شد! ✨** \n💬 نام چت:** `{message.chat.title}`\n**🆔 آیدی چت :** `{message.chat.id}`\n**⬩ 👥 کل کاربران :** `{members}`"
         )
 
 async def verify_user(bot, message):
