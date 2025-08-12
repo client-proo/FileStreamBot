@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>LinkBolt Bot | {{file_name}}</title>
     <link rel="icon" href="https://i.ibb.co/Hh4kF2b/icon.png" type="image/x-icon" />
     <link rel="shortcut icon" href="https://i.ibb.co/Hh4kF2b/icon.png" type="image/x-icon" />
@@ -17,7 +17,6 @@
         rel="stylesheet"
     />
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- اضافه کردن فونت آوسام -->
     <link
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
@@ -33,7 +32,6 @@
         </div>
         <div class="nryt">
             <a class="home-btn magnet" href="#main" onclick="toggleWidthnav(this)">HOME</a>
-
             <a href="#abtus" class="about-btn magnet" onclick="toggleWidthnav(this)">ABOUT</a>
         </div>
     </nav>
@@ -66,8 +64,7 @@
                 </div>
                 <div class="downloadBtn">
                     <button class="magnet" onclick="streamDownload()">
-                        <img style="height: 30px;" src="https://i.ibb.co/RjzYttX/dl.png" alt="" />download
-                        video
+                        <img style="height: 30px;" src="https://i.ibb.co/RjzYttX/dl.png" alt="" />download video
                     </button>
                     <button class="magnet" onclick="copyStreamLink()">
                         <img src="https://i.ibb.co/CM4Y586/link.png" alt="Copy Link" />copy link
@@ -98,13 +95,14 @@
                                     letter-spacing: 0.8px;
                                 "
                             >
-                                This is a Telegram Bot to Stream <span>Movies</span> and <span>Series</span>
-                                directly on Telegram. You can also
-                                <span>download</span> them if you want. This bot is developed by
+                                This is a Telegram Bot to Stream
+                                <span>Movies</span> and <span>Series</span> directly on Telegram.
+                                You can also <span>download</span> them if you want. This bot is
+                                developed by
                                 <a href="https://t.me/mahdi79230"
                                     ><span style="font-weight: 700;">☬ 𐎶𐏃𐎭𐎴 ☬</span></a
-                                >
-                                <br /><br />If you like this bot, then don't forget to share it with your friends
+                                ><br /><br />
+                                If you like this bot, then don't forget to share it with your friends
                                 and family.
                             </p>
                         </div>
@@ -138,7 +136,24 @@
 
         <footer>
             <center>
-                <div class="copyright">
+                <div class="copyright" style="text-align: center;">
+                    <div
+                        class="icons"
+                        style="display: flex; justify-content: center; gap: 10px; margin-bottom: 8px;"
+                    >
+                        <a
+                            href="https://t.me/LinkBoltChannel"
+                            target="_blank"
+                            style="margin: 0;"
+                            ><i class="fa-brands fa-telegram fa-lg"></i
+                        ></a>
+                        <a
+                            href="https://www.instagram.com/avisekeditx"
+                            target="_blank"
+                            style="margin: 0;"
+                            ><i class="fa-brands fa-square-instagram fa-lg"></i
+                        ></a>
+                    </div>
                     <h5 class="text-center">
                         Copyright © 2025
                         <a href="https://t.me/LinkBoltChannel">
@@ -146,21 +161,6 @@
                         </a>
                         . All Rights Reserved.
                     </h5>
-                    <div
-                        class="icons"
-                        style="display: flex; justify-content: center; gap: 5px; margin: 10px 0;"
-                    >
-                        <a href="https://t.me/LinkBoltChannel" target="_blank" style="margin: 0;">
-                            <i class="fa-brands fa-telegram fa-lg"></i>
-                        </a>
-                        <a
-                            href="https://www.instagram.com/avisekeditx"
-                            target="_blank"
-                            style="margin: 0;"
-                        >
-                            <i class="fa-brands fa-square-instagram fa-lg"></i>
-                        </a>
-                    </div>
                 </div>
             </center>
         </footer>
