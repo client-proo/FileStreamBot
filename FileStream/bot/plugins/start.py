@@ -143,7 +143,7 @@ async def my_files(bot: Client, message: Message):
         )
     file_list.append([InlineKeyboardButton("✖️ بستن", callback_data="close")])
     await message.reply_photo(photo=Telegram.FILE_PIC,
-                              caption="Total files: {}".format(total_files),
+                              caption="🗂 تعداد کل فایل ها: {}".format(total_files),
                               reply_markup=InlineKeyboardMarkup(file_list))
 
 
