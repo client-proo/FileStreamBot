@@ -43,28 +43,28 @@ class LANG(object):
 class BUTTON(object):
     START_BUTTONS = InlineKeyboardMarkup(
         [[
-            InlineKeyboardButton('ʜᴇʟᴘ', callback_data='help'),
-            InlineKeyboardButton('ᴀʙᴏᴜᴛ', callback_data='about'),
+            InlineKeyboardButton('راهنما', callback_data='help'),
+            InlineKeyboardButton('درباره', callback_data='about'),
             InlineKeyboardButton('✖️ بستن', callback_data='close')
         ],
-            [InlineKeyboardButton("📢 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ", url=f'https://t.me/{Telegram.UPDATES_CHANNEL}')]
+            [InlineKeyboardButton("📢 کانال اطلاع رسانی", url=f'https://t.me/{Telegram.UPDATES_CHANNEL}')]
         ]
     )
     HELP_BUTTONS = InlineKeyboardMarkup(
         [[
-            InlineKeyboardButton('ʜᴏᴍᴇ', callback_data='home'),
-            InlineKeyboardButton('ᴀʙᴏᴜᴛ', callback_data='about'),
+            InlineKeyboardButton('صفحه اصلی', callback_data='home'),
+            InlineKeyboardButton('درباره', callback_data='about'),
             InlineKeyboardButton('✖️ بستن', callback_data='close'),
         ],
-            [InlineKeyboardButton("📢 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ", url=f'https://t.me/{Telegram.UPDATES_CHANNEL}')]
+            [InlineKeyboardButton("📢 کانال اطلاع رسانی", url=f'https://t.me/{Telegram.UPDATES_CHANNEL}')]
         ]
     )
     ABOUT_BUTTONS = InlineKeyboardMarkup(
         [[
-            InlineKeyboardButton('ʜᴏᴍᴇ', callback_data='home'),
-            InlineKeyboardButton('ʜᴇʟᴘ', callback_data='help'),
+            InlineKeyboardButton('صفحه اصلی', callback_data='home'),
+            InlineKeyboardButton('راهنما', callback_data='help'),
             InlineKeyboardButton('✖️ بستن', callback_data='close'),
         ],
-            [InlineKeyboardButton("📢 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ", url=f'https://t.me/{Telegram.UPDATES_CHANNEL}')]
+            [InlineKeyboardButton("📢 کانال اطلاع رسانی", url=f'https://t.me/{Telegram.UPDATES_CHANNEL}')]
         ]
     )
