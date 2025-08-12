@@ -21,6 +21,31 @@
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
+    <style>
+        .instagram-gradient {
+            background: radial-gradient(circle at 30% 107%, 
+              #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+
+        .telegram-gradient {
+            background: linear-gradient(135deg, #37aee2 0%, #1e96c8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+
+        footer .icons {
+            margin-bottom: 0.5em; /* کمتر کردن فاصله آیکون‌ها با متن */
+        }
+
+        footer h5 {
+            margin-top: 0.3em; /* کم کردن فاصله متن زیر آیکون‌ها */
+            font-family: 'Josefin Sans', sans-serif;
+        }
+    </style>
 </head>
 
 <body>
@@ -136,19 +161,27 @@
 
         <footer>
             <center>
-                <div class="copyright" style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
+                <div class="copyright" style="text-align: center;">
                     <div
                         class="icons"
-                        style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; margin-top: 0;"
+                        style="display: flex; justify-content: center; gap: 10px; margin-bottom: 0.5em;"
                     >
-                        <a href="https://t.me/LinkBoltChannel" target="_blank" style="margin: 0;">
-                            <i class="fa-brands fa-telegram fa-lg"></i>
+                        <a
+                            href="https://t.me/LinkBoltChannel"
+                            target="_blank"
+                            style="margin: 0;"
+                        >
+                            <i class="fa-brands fa-telegram fa-lg telegram-gradient"></i>
                         </a>
-                        <a href="https://www.instagram.com/avisekeditx" target="_blank" style="margin: 0;">
-                            <i class="fa-brands fa-square-instagram fa-lg"></i>
+                        <a
+                            href="https://www.instagram.com/avisekeditx"
+                            target="_blank"
+                            style="margin: 0;"
+                        >
+                            <i class="fa-brands fa-square-instagram fa-lg instagram-gradient"></i>
                         </a>
                     </div>
-                    <h5 class="text-center" style="margin: 0;">
+                    <h5 class="text-center" style="margin-top: 0.3em; font-family: 'Josefin Sans', sans-serif;">
                         Copyright © 2025
                         <a href="https://t.me/LinkBoltChannel">
                             <span style="font-weight: 700;">LinkBolt</span>
@@ -159,14 +192,13 @@
             </center>
         </footer>
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.155.0/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/automat/controlkit.js@master/bin/controlKit.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sheryjs/dist/Shery.js"></script>
+    <script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
+    <script src="https://proavipatil.github.io/data/fs/src/script.js"></script>
 </body>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.155.0/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/automat/controlkit.js@master/bin/controlKit.min.js"></script>
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sheryjs/dist/Shery.js"></script>
-<script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
-<script src="https://proavipatil.github.io/data/fs/src/script.js"></script>
 
 </html>
