@@ -12,9 +12,15 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/proavipatil/data@main/fs/src/plyr.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;700&display=swap" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;700&display=swap"
+        rel="stylesheet"
+    />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <style>
         footer .icons {
             gap: 8px !important;
@@ -29,81 +35,11 @@
             font-family: 'Josefin Sans', sans-serif;
         }
 
-        .downloadBtn img,
-        .dropdown-menu img {
+        .downloadBtn img {
             width: 30px !important; /* عرض ثابت برای همه آیکون‌ها */
             height: 30px !important; /* ارتفاع ثابت برای همه آیکون‌ها */
             object-fit: contain; /* حفظ تناسب تصویر */
             vertical-align: middle; /* تراز عمودی با متن */
-        }
-
-        .controls-section {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-width: 600px;
-            margin: 20px auto;
-        }
-
-        .button-base {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            border-radius: 50px;
-            padding: 10px 20px;
-            color: #ffffff;
-            font-size: 1em;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .button-base:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .dropdown-container {
-            position: relative;
-        }
-
-        .dropdown-menu {
-            display: none;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 10px;
-            padding: 10px;
-            min-width: 200px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-        }
-
-        .dropdown-menu.active {
-            display: block;
-        }
-
-        .player-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .player-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            padding: 10px;
-            width: 100px;
-            text-align: center;
-            cursor: pointer;
-            border: none;
-            font-family: 'Josefin Sans', sans-serif;
-        }
-
-        .player-card:hover {
-            background: rgba(255, 255, 255, 0.15);
         }
     </style>
 </head>
@@ -147,40 +83,26 @@
                     <h4 style="display: inline;">File Size: </h4>
                     <p style="display: inline;">{{file_size}}</p>
                 </div>
-                <nav class="controls-section" aria-label="File options">
-                    <div class="dropdown-container" id="stream-dropdown-container">
-                        <button type="button" class="button-base stream-btn" aria-haspopup="true" aria-expanded="false" aria-controls="stream-menu" id="stream-btn-label" onclick="toggleDropdown()">
-                            <i class="fas fa-external-link-alt" aria-hidden="true"></i>
-                            <span>Stream</span>
-                        </button>
-                        <div class="dropdown-menu" id="stream-menu" aria-labelledby="stream-btn-label" role="menu">
-                            <div class="player-grid" role="group" aria-label="Video players">
-                                <button type="button" class="player-card dropdown-item" role="menuitem" onclick="vlc_player()">
-                                    <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="VLC" />
-                                    <span>VLC</span>
-                                </button>
-                                <button type="button" class="player-card dropdown-item" role="menuitem" onclick="mx_player()">
-                                    <img src="https://i.ibb.co/41WvtQ3/mx.png" alt="MX" />
-                                    <span>MX</span>
-                                </button>
-                                <button type="button" class="player-card dropdown-item" role="menuitem" onclick="n_player()">
-                                    <img src="https://i.ibb.co/Hd2dS4t/nPlayer.png" alt="nPlayer" />
-                                    <span>nPlayer</span>
-                                </button>
-                                <button type="button" class="player-card dropdown-item" role="menuitem" onclick="km_player()">
-                                    <img src="https://i.ibb.co/PLACEHOLDER/kmplayer.png" alt="KM" />
-                                    <span>KM</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <button type="button" class="button-base" onclick="streamDownload()">
-                        <img src="https://i.ibb.co/rRHN89YS/dl.png" alt="Download" />Download
+                <div class="downloadBtn">
+                    <button class="magnet" onclick="streamDownload()">
+                        <img src="https://i.ibb.co/rRHN89YS/dl.png" alt="download video" />download video
                     </button>
-                    <button type="button" class="button-base" onclick="copyStreamLink()">
-                        <img src="https://i.ibb.co/YTqX5QWk/link.png" alt="Copy Link" />Copy Link
+                    <button class="magnet" onclick="copyStreamLink()">
+                        <img src="https://i.ibb.co/YTqX5QWk/link.png" alt="Copy Link" />copy link
                     </button>
-                </nav>
+                    <button class="magnet" onclick="vlc_player()">
+                        <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="watch in VLC PLAYER" />watch in VLC PLAYER
+                    </button>
+                    <button class="magnet" onclick="mx_player()">
+                        <img src="https://i.ibb.co/41WvtQ3/mx.png" alt="watch in MX PLAYER" />watch in MX PLAYER
+                    </button>
+                    <button class="magnet" onclick="n_player()">
+                        <img src="https://i.ibb.co/Hd2dS4t/nPlayer.png" alt="watch in nPlayer" />watch in nPlayer
+                    </button>
+                    <button class="magnet" onclick="km_player()">
+                        <img src="https://i.ibb.co/PLACEHOLDER/kmplayer.png" alt="watch in KM PLAYER" />watch in KM PLAYER
+                    </button>
+                </div>
             </div>
             <div class="abt">
                 <div class="about">
@@ -270,21 +192,5 @@
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sheryjs/dist/Shery.js"></script>
 <script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
 <script src="https://proavipatil.github.io/data/fs/src/script.js"></script>
-<script>
-    function toggleDropdown() {
-        const menu = document.getElementById('stream-menu');
-        const btn = document.getElementById('stream-btn-label');
-        menu.classList.toggle('active');
-        btn.setAttribute('aria-expanded', menu.classList.contains('active'));
-    }
-
-    // توابع نمونه (باید در script.js پیاده‌سازی شوند)
-    function vlc_player() { /* پیاده‌سازی */ }
-    function mx_player() { /* پیاده‌سازی */ }
-    function n_player() { /* پیاده‌سازی */ }
-    function km_player() { /* پیاده‌سازی */ }
-    function streamDownload() { /* پیاده‌سازی */ }
-    function copyStreamLink() { navigator.clipboard.writeText('{{file_url}}'); alert('Link copied to clipboard'); }
-</script>
 
 </html>
