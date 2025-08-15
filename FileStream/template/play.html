@@ -25,11 +25,21 @@
         footer .icons {
             gap: 8px !important;
             margin-bottom: 4px !important;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         footer h5 {
             margin-top: 4px !important;
             font-family: 'Josefin Sans', sans-serif;
+        }
+
+        .downloadBtn img {
+            width: 30px !important; /* عرض ثابت برای همه آیکون‌ها */
+            height: 30px !important; /* ارتفاع ثابت برای همه آیکون‌ها */
+            object-fit: contain; /* حفظ تناسب تصویر */
+            vertical-align: middle; /* تراز عمودی با متن */
         }
     </style>
 </head>
@@ -75,19 +85,19 @@
                 </div>
                 <div class="downloadBtn">
                     <button class="magnet" onclick="streamDownload()">
-                        <img style="height: 30px;" src="https://i.ibb.co/rRHN89YS/dl.png" alt="" />download video
+                        <img src="https://i.ibb.co/rRHN89YS/dl.png" alt="download video" />download video
                     </button>
                     <button class="magnet" onclick="copyStreamLink()">
                         <img src="https://i.ibb.co/YTqX5QWk/link.png" alt="Copy Link" />copy link
                     </button>
                     <button class="magnet" onclick="vlc_player()">
-                        <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="" />watch in VLC PLAYER
+                        <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="watch in VLC PLAYER" />watch in VLC PLAYER
                     </button>
                     <button class="magnet" onclick="mx_player()">
-                        <img src="https://i.ibb.co/41WvtQ3/mx.png" alt="" />watch in MX PLAYER
+                        <img src="https://i.ibb.co/41WvtQ3/mx.png" alt="watch in MX PLAYER" />watch in MX PLAYER
                     </button>
                     <button class="magnet" onclick="n_player()">
-                        <img src="https://i.ibb.co/Hd2dS4t/nPlayer.png" alt="" />watch in nPlayer
+                        <img src="https://i.ibb.co/Hd2dS4t/nPlayer.png" alt="watch in nPlayer" />watch in nPlayer
                     </button>
                 </div>
             </div>
