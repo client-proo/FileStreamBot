@@ -36,10 +36,25 @@
         }
 
         .downloadBtn img {
-            width: 30px !important; /* عرض ثابت برای همه آیکون‌ها */
-            height: 30px !important; /* ارتفاع ثابت برای همه آیکون‌ها */
-            object-fit: contain; /* حفظ تناسب تصویر */
-            vertical-align: middle; /* تراز عمودی با متن */
+            width: 30px !important;
+            height: 30px !important;
+            object-fit: contain;
+            vertical-align: middle;
+        }
+
+        /* استایل برای منوی کشویی پلیرها */
+        .stream-menu {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .stream-toggle {
+            margin-top: 10px;
+            display: inline-block;
         }
     </style>
 </head>
@@ -83,7 +98,12 @@
                     <h4 style="display: inline;">File Size: </h4>
                     <p style="display: inline;">{{file_size}}</p>
                 </div>
-                <div class="downloadBtn">
+
+                <!-- دکمه Stream -->
+                <button class="magnet stream-toggle" onclick="toggleStreamMenu()">Stream Players ▼</button>
+
+                <!-- منوی کشویی پلیرها -->
+                <div class="downloadBtn stream-menu" id="streamMenu">
                     <button class="magnet" onclick="streamDownload()">
                         <img src="https://i.ibb.co/rRHN89YS/dl.png" alt="download video" />download video
                     </button>
@@ -104,6 +124,7 @@
                     </button>
                 </div>
             </div>
+
             <div class="abt">
                 <div class="about">
                     <div class="about-dets">
@@ -111,30 +132,19 @@
                             <h1 style="text-align: center;">
                                 WELCOME TO OUR <span>FILE STREAM</span> BOT
                             </h1>
-                            <p
-                                style="
-                                    text-align: center;
-                                    line-height: 2;
-                                    word-spacing: 2px;
-                                    letter-spacing: 0.8px;
-                                "
-                            >
+                            <p style="text-align: center; line-height: 2; word-spacing: 2px; letter-spacing: 0.8px;">
                                 This is a Telegram Bot to Stream
                                 <span>Movies</span> and <span>Series</span> directly on Telegram.
                                 You can also <span>download</span> them if you want. This bot is
                                 developed by
-                                <a href="https://t.me/mahdi79230"
-                                    ><span style="font-weight: 700;">☬ 𐎶𐏃𐎭𐎴 ☬</span></a
-                                ><br /><br />
+                                <a href="https://t.me/mahdi79230"><span style="font-weight: 700;">☬ 𐎶𐏃𐎭𐎴 ☬</span></a><br /><br />
                                 If you like this bot, then don't forget to share it with your friends
                                 and family.
                             </p>
                         </div>
 
                         <div class="abt-sec" id="channels">
-                            <h1>
-                                JOIN OUR <span>TELEGRAM</span> CHANNELS
-                            </h1>
+                            <h1>JOIN OUR <span>TELEGRAM</span> CHANNELS</h1>
                             <div class="links chnl-link">
                                 <a class="magnet" href="https://t.me/LinkBoltChannel">
                                     <button>LinkBolt channel</button>
@@ -161,10 +171,7 @@
         <footer>
             <center>
                 <div class="copyright" style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
-                    <div
-                        class="icons"
-                        style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; margin-top: 0;"
-                    >
+                    <div class="icons" style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; margin-top: 0;">
                         <a href="https://t.me/LinkBoltChannel" target="_blank" style="margin: 0;">
                             <i class="fa-brands fa-telegram fa-lg"></i>
                         </a>
@@ -183,14 +190,20 @@
             </center>
         </footer>
     </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.155.0/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/automat/controlkit.js@master/bin/controlKit.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sheryjs/dist/Shery.js"></script>
+    <script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
+    <script src="https://proavipatil.github.io/data/fs/src/script.js"></script>
+
+    <script>
+        function toggleStreamMenu() {
+            const menu = document.getElementById('streamMenu');
+            menu.style.display = (menu.style.display === 'flex') ? 'none' : 'flex';
+        }
+    </script>
 </body>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.155.0/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/automat/controlkit.js@master/bin/controlKit.min.js"></script>
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sheryjs/dist/Shery.js"></script>
-<script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
-<script src="https://proavipatil.github.io/data/fs/src/script.js"></script>
-
 </html>
