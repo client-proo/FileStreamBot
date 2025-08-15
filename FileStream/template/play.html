@@ -1,118 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta property="og:image" content="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/image/live.png">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AV BOTz | {{file_name}}</title>
-    <link rel="icon" href="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/image/logo.png" type="image/x-icon">
-    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LinkBolt Bot | {{file_name}}</title>
+    <link rel="icon" href="https://i.ibb.co/Hh4kF2b/icon.png" type="image/x-icon" />
+    <link rel="shortcut icon" href="https://i.ibb.co/Hh4kF2b/icon.png" type="image/x-icon" />
+    <link rel="stylesheet" href="https://unpkg.com/sheryjs/dist/Shery.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/proavipatil/data@main/fs/src/style.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/proavipatil/data@main/fs/src/plyr.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;700&display=swap"
+        rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+        footer .icons {
+            gap: 8px !important;
+            margin-bottom: 4px !important;
+        }
+
+        footer h5 {
+            margin-top: 4px !important;
+            font-family: 'Josefin Sans', sans-serif;
+        }
+    </style>
 </head>
 
-<!-- this code is modified @BOT_OWNER26 tg :- @AV_BOTz_UPDATE -->
-    
 <body>
-    <div class="container">
-        <header>
-            <h1 id="file-name">{{file_name}}</h1>
-        </header>
-        <div class="player-container">
-            <div class="video-wrapper">
-                <video class="plyr" controls poster="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/image/well.png" alt="Video Player Poster Image">
-                    <source src="{{file_url}}" type="video/mp4" alt="Video Source">
-                    Your browser does not support the video tag.
-                </video>
+    <nav>
+        <div class="nleft">
+            <a href="#">
+                <h3 id="heading" style="z-index: 100;" class="magnet title">LinkBolt</h3>
+            </a>
+        </div>
+        <div class="nryt">
+            <a class="home-btn magnet" href="#main" onclick="toggleWidthnav(this)">HOME</a>
+            <a href="#abtus" class="about-btn magnet" onclick="toggleWidthnav(this)">ABOUT</a>
+        </div>
+    </nav>
+    <center>
+        <div class="about-nav">
+            <a href="#abtus" class="wlcm magnet" onclick="toggleWidth(this)">WELCOME</a>
+            <a href="#channels" class="abt-chnl magnet" onclick="toggleWidth(this)">CHANNELS</a>
+            <a href="#contact" class="magnet contact-btn" onclick="toggleWidth(this)">CONTACT</a>
+        </div>
+    </center>
+
+    <div class="outer">
+        <div class="inner">
+            <div class="main" id="main">
+                <video
+                    id="player"
+                    class="player"
+                    src="{{file_url}}"
+                    type="video/mp4"
+                    playsinline
+                    controls
+                    width="100%"
+                ></video>
+                <div class="player"></div>
+                <div class="file-name">
+                    <h4 style="display: inline;">File Name: </h4>
+                    <p style="display: inline;" id="myDiv">{{file_name}}</p><br />
+                    <h4 style="display: inline;">File Size: </h4>
+                    <p style="display: inline;">{{file_size}}</p>
+                </div>
+                <div class="downloadBtn">
+                    <button class="magnet" onclick="streamDownload()">
+                        <img style="height: 30px;" src="https://i.ibb.co/RjzYttX/dl.png" alt="" />download video
+                    </button>
+                    <button class="magnet" onclick="copyStreamLink()">
+                        <img src="https://i.ibb.co/CM4Y586/link.png" alt="Copy Link" />copy link
+                    </button>
+                    <button class="magnet" onclick="vlc_player()">
+                        <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="" />watch in VLC PLAYER
+                    </button>
+                    <button class="magnet" onclick="mx_player()">
+                        <img src="https://i.ibb.co/41WvtQ3/mx.png" alt="" />watch in MX PLAYER
+                    </button>
+                    <button class="magnet" onclick="n_player()">
+                        <img src="https://i.ibb.co/Hd2dS4t/nPlayer.png" alt="" />watch in nPlayer
+                    </button>
+                </div>
+            </div>
+            <div class="abt">
+                <div class="about">
+                    <div class="about-dets">
+                        <div class="abt-sec" id="abtus" style="padding: 160px 30px;">
+                            <h1 style="text-align: center;">
+                                WELCOME TO OUR <span>FILE STREAM</span> BOT
+                            </h1>
+                            <p
+                                style="
+                                    text-align: center;
+                                    line-height: 2;
+                                    word-spacing: 2px;
+                                    letter-spacing: 0.8px;
+                                "
+                            >
+                                This is a Telegram Bot to Stream
+                                <span>Movies</span> and <span>Series</span> directly on Telegram.
+                                You can also <span>download</span> them if you want. This bot is
+                                developed by
+                                <a href="https://t.me/mahdi79230"
+                                    ><span style="font-weight: 700;">☬ 𐎶𐏃𐎭𐎴 ☬</span></a
+                                ><br /><br />
+                                If you like this bot, then don't forget to share it with your friends
+                                and family.
+                            </p>
+                        </div>
+
+                        <div class="abt-sec" id="channels">
+                            <h1>
+                                JOIN OUR <span>TELEGRAM</span> CHANNELS
+                            </h1>
+                            <div class="links chnl-link">
+                                <a class="magnet" href="https://t.me/LinkBoltChannel">
+                                    <button>LinkBolt channel</button>
+                                </a>
+                                <a class="magnet" href="https://t.me/ISVvpn">
+                                    <button>ISVvpn</button>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="abt-sec" id="contact">
+                            <p style="text-align: center;">Report Bugs and Contact us on Telegram Below</p>
+                            <div class="links contact">
+                                <a href="https://t.me/mahdi79230">
+                                    <button>CONTACT</button>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-<!-- this code is modified @BOT_OWNER26 tg :- @AV_BOTz_UPDATE-->
-        
-        <div class="controls">
-            <button class="btn download" onclick="download()">
-                <i class="fas fa-cloud-download-alt"></i> Download
-            </button>
-            <button class="btn copy-link" onclick="copyLink()">
-                <i class="fas fa-link"></i> Copy Link
-            </button>
-        </div> 
-        <div class="container">
-            <button class="btn download" onclick="playOnline('vlc')">
-                <img src="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/image/vlc.png" alt="VLC Mobile" class="player-logo"> VLC Mobile
-            </button>
-            <button class="btn copy-link" onclick="playOnline('mx')">
-                <img src="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/image/mx.png" alt="MX Player" class="player-logo"> MX Player
-            </button>
-            <button class="btn download" onclick="playOnline('np')">
-                <img src="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/image/nPlayer.webp" alt="nPlayer" class="player-logo"> nPlayer
-            </button>
-            <button class="btn download" onclick="playOnline('sp')">
-                <img src="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/image/splayer.webp" alt="S Player" class="player-logo"> S Player
-            </button>
-            <button class="btn download" onclick="playOnline('km')">
-                <img src="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/image/km.webp" alt="KM Player" class="player-logo"> KM Player
-            </button>
-        </div>
-
-<!-- this code is modified @BOT_OWNER26 tg :- @AV_BOTz_UPDATE-->
-        
-        <div class="container">
-            <header>
-                <a href="http://youtube.com/@avbotx"> <img src="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/image/youtube.png" class="player-logo"></a>
-                <a href="http://GitHub.com/Botsthe"> <img src="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/image/github.png" class="player-logo"></a>
-                <a href="http://t.me/BOT_OWNER26"> <img src="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/image/telegram.png" class="player-logo"></a>
-                <a href="https://www.instagram.com/aman_developerr"> <img src="https://cdn.jsdelivr.net/gh/Botsthe/DATABASE@main/image/instagram.png" class="player-logo"></a>
-            </header>
-        </div>
+        <footer>
+            <center>
+                <div class="copyright" style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
+                    <div
+                        class="icons"
+                        style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; margin-top: 0;"
+                    >
+                        <a href="https://t.me/LinkBoltChannel" target="_blank" style="margin: 0;">
+                            <i class="fa-brands fa-telegram fa-lg"></i>
+                        </a>
+                        <a href="https://www.instagram.com/avisekeditx" target="_blank" style="margin: 0;">
+                            <i class="fa-brands fa-square-instagram fa-lg"></i>
+                        </a>
+                    </div>
+                    <h5 class="text-center" style="margin: 0;">
+                        Copyright © 2025
+                        <a href="https://t.me/LinkBoltChannel">
+                            <span style="font-weight: 700;">LinkBolt</span>
+                        </a>
+                        . All Rights Reserved.
+                    </h5>
+                </div>
+            </center>
+        </footer>
     </div>
-
-<!-- this code is modified @BOT_OWNER26 tg :- @AV_BOTz_UPDATE-->
-    
-    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const videoElement = document.querySelector('.plyr');
-            new Plyr(videoElement);
-        });
-
-        const currentUrl = window.location.href;
-        const finalUrl = currentUrl.replace("/watch/", "/dl/");
-
-<!-- this code is modified @BOT_OWNER26 tg :- @AV_BOTz_UPDATE-->
-        
-        function playOnline(player) {
-            const playerUrls = {
-                vlc: `vlc://${finalUrl}`,
-                mxp: `intent:${finalUrl}#Intent;package=com.mxtech.videoplayer.pro;end`,
-                mx: `intent:${finalUrl}#Intent;package=com.mxtech.videoplayer.ad;end`,
-                np: `nplayer-${finalUrl}`,
-                sp: `intent:${finalUrl}#Intent;action=com.young.simple.player.playback_online;package=com.young.simple.player;end`,
-                km: `intent:${finalUrl}#Intent;package=com.kmplayer;end`
-            };
-            window.location.href = playerUrls[player] || finalUrl;
-        }
-
-        function download() {
-            window.location.href = finalUrl;
-        }
-
-        function copyLink() {
-            navigator.clipboard.writeText(finalUrl)
-                .then(() => {
-                    const feedback = document.createElement('div');
-                    feedback.className = 'feedback';
-                    feedback.textContent = "📋 Link copied to clipboard!";
-                    feedback.setAttribute("role", "alert");
-                    document.body.appendChild(feedback);
-                    setTimeout(() => feedback.remove(), 3000);
-                })
-                .catch(err => console.error('Could not copy text: ', err));
-        }
-    </script>
 </body>
-</html
 
-<!-- this code is modified @BOT_OWNER26 tg :- @AV_BOTz_UPDATE-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.155.0/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/automat/controlkit.js@master/bin/controlKit.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sheryjs/dist/Shery.js"></script>
+<script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
+<script src="https://proavipatil.github.io/data/fs/src/script.js"></script>
+
+</html>
