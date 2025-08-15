@@ -1,15 +1,15 @@
 <h1 align="center">FileStreamBot</h1>
 <p align="center">
-  <a href="https://github.com/Avipatilpro/FileStreamBot">
+  <a href="https://github.com/client-proo/FileStreamBot">
     <img src="https://graph.org/file/80d1f94e81bbc1acadb36.jpg" alt="Cover Image" width="550">
   </a>
 </p>  
   <p align="center">
    </strong></a>
     <br><b>
-    <a href="https://github.com/Avipatilpro/FileStreamBot/issues">Report a Bug</a>
+    <a href="https://github.com/client-proo/FileStreamBot/issues">Report a Bug</a>
     |
-    <a href="https://github.com/Avipatilpro/FileStreamBot/issues">Request Feature</a></b>
+    <a href="https://github.com/client-proo/FileStreamBot/issues">Request Feature</a></b>
   </p>
 
 
@@ -17,7 +17,7 @@
 ### 🍁 About :
 
 <p align="center">
-    <a href="https://github.com/Avipatilpro/FileStreamBot">
+    <a href="https://github.com/client-proo/FileStreamBot">
         <img src="https://i.ibb.co/pvMy0Np6/link-3x.png" height="100" width="100" alt="FileStreamBot Logo">
     </a>
 </p>
