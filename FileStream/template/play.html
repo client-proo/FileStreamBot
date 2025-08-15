@@ -22,7 +22,6 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <style>
-        /* keep your original footer tweaks */
         footer .icons {
             gap: 8px !important;
             margin-bottom: 4px !important;
@@ -36,110 +35,11 @@
             font-family: 'Josefin Sans', sans-serif;
         }
 
-        /* ensure all icons are same size */
-        .btn img, .player-item img, .downloadBtn img {
-            width: 30px !important;
-            height: 30px !important;
-            object-fit: contain;
-            vertical-align: middle;
-        }
-
-        /* Thunder-like buttons + dropdown styles */
-        :root {
-            --accent-1: #1a237e;
-            --accent-2: #0d47a1;
-            --panel-bg: rgba(255,255,255,0.06);
-            --panel-bg-hover: rgba(255,255,255,0.11);
-            --text: #ffffff;
-        }
-
-        .controls-row {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 10px;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--panel-bg);
-            color: var(--text);
-            border: 1px solid rgba(255,255,255,0.06);
-            padding: 10px 14px;
-            border-radius: 999px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: background .18s, transform .12s;
-            user-select: none;
-        }
-        .btn:hover { background: var(--panel-bg-hover); transform: translateY(-2px); }
-        .btn i { font-size: 18px; }
-
-        /* stream dropdown panel */
-        .stream-wrapper { position: relative; display: inline-block; }
-        .stream-panel {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%) scaleY(0.96);
-            top: calc(100% + 12px);
-            width: 340px;
-            max-width: 94vw;
-            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
-            border-radius: 12px;
-            padding: 12px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            transform-origin: top center;
-            transition: opacity .25s ease, visibility .25s, transform .28s cubic-bezier(.2,.9,.2,1);
-            border:1px solid rgba(255,255,255,0.04);
-            color: var(--text);
-            z-index: 9999;
-        }
-        .stream-panel.show {
-            opacity: 1;
-            visibility: visible;
-            pointer-events: auto;
-            transform: translateX(-50%) scaleY(1);
-        }
-
-        .stream-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-        .stream-header h4 { margin:0; font-size:14px; }
-        .stream-close { background:transparent; border:none; color:var(--text); cursor:pointer; font-size:16px; }
-
-        .players-grid { display:flex; flex-wrap:wrap; gap:8px; }
-        .player-item {
-            display:flex; align-items:center; gap:8px;
-            padding:8px 10px; border-radius:10px;
-            background: rgba(0,0,0,0.18);
-            border:1px solid rgba(255,255,255,0.03);
-            cursor:pointer; font-size:14px; color:var(--text);
-        }
-        .player-item:hover { background: rgba(255,255,255,0.06); transform: translateY(-3px); }
-
-        /* toast */
-        .toast {
-            position: fixed;
-            right: 18px;
-            bottom: 18px;
-            padding: 10px 14px;
-            border-radius: 8px;
-            background: rgba(0,0,0,0.6);
-            color: #fff;
-            z-index: 99999;
-            display: none;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-        }
-
-        @media (max-width:520px) {
-            .stream-panel { width: 92vw; }
-            .btn { padding: 9px 12px; }
+        .downloadBtn img {
+            width: 30px !important; /* عرض ثابت برای همه آیکون‌ها */
+            height: 30px !important; /* ارتفاع ثابت برای همه آیکون‌ها */
+            object-fit: contain; /* حفظ تناسب تصویر */
+            vertical-align: middle; /* تراز عمودی با متن */
         }
     </style>
 </head>
@@ -183,71 +83,23 @@
                     <h4 style="display: inline;">File Size: </h4>
                     <p style="display: inline;">{{file_size}}</p>
                 </div>
-
-                <!-- === Controls: Stream (dropdown) + Download + Copy === -->
-                <div class="controls-row" role="group" aria-label="file controls">
-                    <div class="stream-wrapper" id="streamWrapper">
-                        <button class="btn" id="streamToggle" aria-expanded="false" aria-controls="streamPanel">
-                            <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="stream icon" />
-                            <span>Stream</span>
-                            <i id="caret" class="fas fa-chevron-down" style="margin-left:6px;font-size:12px"></i>
-                        </button>
-
-                        <div class="stream-panel" id="streamPanel" role="menu" aria-hidden="true" aria-labelledby="streamToggle">
-                            <div class="stream-header">
-                                <h4>Open with external player</h4>
-                                <button class="stream-close" id="streamClose" aria-label="Close">✕</button>
-                            </div>
-
-                            <div style="font-size:13px;margin-bottom:6px;color:rgba(255,255,255,0.85)">Mobile Players</div>
-                            <div class="players-grid" role="group" aria-label="mobile players" style="margin-bottom:8px">
-                                <div class="player-item" data-player="vlc" tabindex="0">
-                                    <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="VLC" /><span>VLC</span>
-                                </div>
-                                <div class="player-item" data-player="mx" tabindex="0">
-                                    <img src="https://i.ibb.co/41WvtQ3/mx.png" alt="MX" /><span>MX Player</span>
-                                </div>
-                                <div class="player-item" data-player="nplayer" tabindex="0">
-                                    <img src="https://i.ibb.co/Hd2dS4t/nPlayer.png" alt="nPlayer" /><span>nPlayer</span>
-                                </div>
-                                <div class="player-item" data-player="splayer" tabindex="0">
-                                    <img src="https://i.ibb.co/PLACEHOLDER/splayer.png" alt="S Player" /><span>S Player</span>
-                                </div>
-                                <div class="player-item" data-player="km" tabindex="0">
-                                    <img src="https://i.ibb.co/PLACEHOLDER/kmplayer.png" alt="KM" /><span>KM</span>
-                                </div>
-                            </div>
-
-                            <div style="font-size:13px;margin-bottom:6px;color:rgba(255,255,255,0.85)">Desktop Players</div>
-                            <div class="players-grid" role="group" aria-label="desktop players">
-                                <div class="player-item" data-player="vlc_pc" tabindex="0">
-                                    <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="VLC" /><span>VLC (PC)</span>
-                                </div>
-                                <div class="player-item" data-player="potplayer" tabindex="0">
-                                    <img src="https://i.ibb.co/PLACEHOLDER/pot.png" alt="PotPlayer" /><span>PotPlayer</span>
-                                </div>
-                                <div class="player-item" data-player="mpc" tabindex="0">
-                                    <img src="https://i.ibb.co/PLACEHOLDER/mpc.png" alt="MPC-HC" /><span>MPC-HC</span>
-                                </div>
-                                <div class="player-item" data-player="kmpc" tabindex="0">
-                                    <img src="https://i.ibb.co/PLACEHOLDER/kmplayer.png" alt="KM PC" /><span>KM Player</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button class="btn" id="downloadBtn" title="Download">
-                        <img src="https://i.ibb.co/rRHN89YS/dl.png" alt="download" />
-                        <span>Download</span>
+                <div class="downloadBtn">
+                    <button class="magnet" onclick="streamDownload()">
+                        <img src="https://i.ibb.co/rRHN89YS/dl.png" alt="download video" />download video
                     </button>
-
-                    <button class="btn" id="copyBtn" title="Copy Link">
-                        <i class="fas fa-copy"></i>
-                        <span>Copy Link</span>
+                    <button class="magnet" onclick="copyStreamLink()">
+                        <img src="https://i.ibb.co/YTqX5QWk/link.png" alt="Copy Link" />copy link
+                    </button>
+                    <button class="magnet" onclick="vlc_player()">
+                        <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="watch in VLC PLAYER" />watch in VLC PLAYER
+                    </button>
+                    <button class="magnet" onclick="mx_player()">
+                        <img src="https://i.ibb.co/41WvtQ3/mx.png" alt="watch in MX PLAYER" />watch in MX PLAYER
+                    </button>
+                    <button class="magnet" onclick="n_player()">
+                        <img src="https://i.ibb.co/Hd2dS4t/nPlayer.png" alt="watch in nPlayer" />watch in nPlayer
                     </button>
                 </div>
-                <!-- === end controls === -->
-
             </div>
             <div class="abt">
                 <div class="about">
@@ -338,124 +190,4 @@
 <script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
 <script src="https://proavipatil.github.io/data/fs/src/script.js"></script>
 
-<script>
-    // data from template
-    const fileUrl = "{{file_url}}";
-    const fileName = "{{file_name}}";
-
-    // stream toggle logic
-    const streamToggle = document.getElementById('streamToggle');
-    const streamPanel = document.getElementById('streamPanel');
-    const streamClose = document.getElementById('streamClose');
-    const streamWrapper = document.getElementById('streamWrapper');
-    const caret = document.getElementById('caret');
-
-    function openStream(){
-        streamPanel.classList.add('show');
-        streamPanel.setAttribute('aria-hidden','false');
-        streamToggle.setAttribute('aria-expanded','true');
-        caret.style.transform = 'rotate(180deg)';
-    }
-    function closeStream(){
-        streamPanel.classList.remove('show');
-        streamPanel.setAttribute('aria-hidden','true');
-        streamToggle.setAttribute('aria-expanded','false');
-        caret.style.transform = 'rotate(0deg)';
-    }
-
-    streamToggle.addEventListener('click', function(e){
-        e.stopPropagation();
-        streamPanel.classList.contains('show') ? closeStream() : openStream();
-    });
-
-    streamClose.addEventListener('click', function(e){
-        e.stopPropagation();
-        closeStream();
-    });
-
-    // close when clicking outside or pressing Escape
-    document.addEventListener('click', function(e){
-        if(!streamWrapper.contains(e.target)){
-            closeStream();
-        }
-    });
-    document.addEventListener('keydown', function(e){
-        if(e.key === 'Escape') closeStream();
-    });
-
-    // player-item clicks
-    document.querySelectorAll('.player-item').forEach(item=>{
-        item.addEventListener('click', async function(){
-            const player = item.getAttribute('data-player');
-            closeStream();
-
-            // map to functions if available
-            const fnMap = {
-                vlc: 'vlc_player',
-                mx: 'mx_player',
-                nplayer: 'n_player',
-                splayer: 's_player',
-                km: 'km_player',
-                vlc_pc: 'vlc_player',
-                potplayer: 'pot_player',
-                mpc: 'mpc_player',
-                kmpc: 'km_player'
-            };
-
-            const fnName = fnMap[player];
-            if(fnName && typeof window[fnName] === 'function'){
-                try{ window[fnName](); return; } catch(err){ console.warn(err); }
-            }
-
-            // fallback: copy link & notify
-            try{
-                await navigator.clipboard.writeText(fileUrl);
-                showToast('Link copied — paste into your player');
-            }catch(err){
-                window.open(fileUrl, '_blank');
-            }
-        });
-
-        item.addEventListener('keydown', function(e){
-            if(e.key === 'Enter' || e.key === ' ') { item.click(); }
-        });
-    });
-
-    // download
-    document.getElementById('downloadBtn').addEventListener('click', function(){
-        const a = document.createElement('a');
-        a.href = fileUrl;
-        a.download = fileName || '';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    });
-
-    // copy link
-    document.getElementById('copyBtn').addEventListener('click', async function(){
-        try{
-            await navigator.clipboard.writeText(fileUrl);
-            showToast('Link copied to clipboard');
-        }catch(err){
-            alert('Copy failed — please copy manually: ' + fileUrl);
-        }
-    });
-
-    // toast util
-    const toastEl = document.getElementById('toast');
-    let toastTimer = null;
-    function showToast(msg){
-        toastEl.textContent = msg;
-        toastEl.style.display = 'block';
-        toastEl.style.opacity = '1';
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(()=>{ toastEl.style.opacity='0'; setTimeout(()=>{ toastEl.style.display='none'; },250) },1800);
-    }
-
-    // placeholder player functions (you can replace with intents/custom schemes)
-    function vlc_player(){ try{ window.open(fileUrl,'_blank'); }catch(e){console.warn(e);} }
-    function mx_player(){ try{ window.open(fileUrl,'_blank'); }catch(e){console.warn(e);} }
-    function n_player(){ try{ window.open(fileUrl,'_blank'); }catch(e){console.warn(e);} }
-    function km_player(){ try{ window.open(fileUrl,'_blank'); }catch(e){console.warn(e);} }
-</script>
 </html>
