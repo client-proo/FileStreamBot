@@ -12,16 +12,68 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/proavipatil/data@main/fs/src/plyr.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;700&display=swap"
-        rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;700&display=swap" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
+        body {
+            background: linear-gradient(135deg, #1a237e, #0d47a1);
+            color: #ffffff;
+            font-family: 'Josefin Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .main {
+            text-align: center;
+            padding: 20px;
+        }
+
+        video.player {
+            width: 100%;
+            max-width: 600px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .file-name {
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .control-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50px;
+            padding: 10px 20px;
+            color: #ffffff;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .control-btn img,
+        .control-btn i {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+        }
+
         footer .icons {
             gap: 8px !important;
             margin-bottom: 4px !important;
@@ -33,13 +85,6 @@
         footer h5 {
             margin-top: 4px !important;
             font-family: 'Josefin Sans', sans-serif;
-        }
-
-        .downloadBtn img {
-            width: 30px !important; /* عرض ثابت برای همه آیکون‌ها */
-            height: 30px !important; /* ارتفاع ثابت برای همه آیکون‌ها */
-            object-fit: contain; /* حفظ تناسب تصویر */
-            vertical-align: middle; /* تراز عمودی با متن */
         }
     </style>
 </head>
@@ -76,31 +121,35 @@
                     controls
                     width="100%"
                 ></video>
-                <div class="player"></div>
                 <div class="file-name">
                     <h4 style="display: inline;">File Name: </h4>
                     <p style="display: inline;" id="myDiv">{{file_name}}</p><br />
                     <h4 style="display: inline;">File Size: </h4>
                     <p style="display: inline;">{{file_size}}</p>
                 </div>
-                <div class="downloadBtn">
-                    <button class="magnet" onclick="streamDownload()">
-                        <img src="https://i.ibb.co/rRHN89YS/dl.png" alt="download video" />download video
+                <div class="controls">
+                    <button class="control-btn" onclick="stream()">
+                        <i class="fas fa-play"></i> Stream
                     </button>
-                    <button class="magnet" onclick="copyStreamLink()">
-                        <img src="https://i.ibb.co/YTqX5QWk/link.png" alt="Copy Link" />copy link
+                    <div class="player-options">
+                        <button class="control-btn" onclick="vlc_player()">
+                            <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="VLC" /> VLC Player
+                        </button>
+                        <button class="control-btn" onclick="mx_player()">
+                            <img src="https://i.ibb.co/41WvtQ3/mx.png" alt="MX" /> MX Player
+                        </button>
+                        <button class="control-btn" onclick="n_player()">
+                            <img src="https://i.ibb.co/Hd2dS4t/nPlayer.png" alt="nPlayer" /> nPlayer
+                        </button>
+                        <button class="control-btn" onclick="km_player()">
+                            <img src="https://i.ibb.co/PLACEHOLDER/kmplayer.png" alt="KM" /> KM Player
+                        </button>
+                    </div>
+                    <button class="control-btn" onclick="download()">
+                        <i class="fas fa-cloud-download-alt"></i> Download
                     </button>
-                    <button class="magnet" onclick="vlc_player()">
-                        <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="watch in VLC PLAYER" />watch in VLC PLAYER
-                    </button>
-                    <button class="magnet" onclick="mx_player()">
-                        <img src="https://i.ibb.co/41WvtQ3/mx.png" alt="watch in MX PLAYER" />watch in MX PLAYER
-                    </button>
-                    <button class="magnet" onclick="n_player()">
-                        <img src="https://i.ibb.co/Hd2dS4t/nPlayer.png" alt="watch in nPlayer" />watch in nPlayer
-                    </button>
-                    <button class="magnet" onclick="km_player()">
-                        <img src="https://i.ibb.co/PLACEHOLDER/kmplayer.png" alt="watch in KM PLAYER" />watch in KM PLAYER
+                    <button class="control-btn" onclick="copyStreamLink()">
+                        <i class="fas fa-link"></i> Copy Link
                     </button>
                 </div>
             </div>
@@ -192,5 +241,28 @@
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sheryjs/dist/Shery.js"></script>
 <script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
 <script src="https://proavipatil.github.io/data/fs/src/script.js"></script>
+<script>
+    // تابع‌های جاوااسکریپت (مثال)
+    function stream() {
+        document.getElementById('player').play();
+    }
+
+    function download() {
+        // منطق دانلود
+        alert('Download functionality to be implemented');
+    }
+
+    function copyStreamLink() {
+        // منطق کپی لینک
+        navigator.clipboard.writeText('{{file_url}}');
+        alert('Link copied to clipboard');
+    }
+
+    // توابع پخش‌کننده‌ها (باید در script.js پیاده‌سازی شوند)
+    function vlc_player() { /* پیاده‌سازی */ }
+    function mx_player() { /* پیاده‌سازی */ }
+    function n_player() { /* پیاده‌سازی */ }
+    function km_player() { /* پیاده‌سازی */ }
+</script>
 
 </html>
