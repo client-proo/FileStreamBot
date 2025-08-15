@@ -37,7 +37,7 @@
             vertical-align: middle; /* تراز عمودی با متن */
         }
 
-        .controls {
+        .controls-section {
             display: flex;
             flex-direction: column;
             gap: 10px;
@@ -147,7 +147,7 @@
                     <h4 style="display: inline;">File Size: </h4>
                     <p style="display: inline;">{{file_size}}</p>
                 </div>
-                <div class="controls">
+                <nav class="controls-section" aria-label="File options">
                     <div class="dropdown-container" id="stream-dropdown-container">
                         <button type="button" class="button-base stream-btn" aria-haspopup="true" aria-expanded="false" aria-controls="stream-menu" id="stream-btn-label" onclick="toggleDropdown()">
                             <i class="fas fa-external-link-alt" aria-hidden="true"></i>
@@ -164,7 +164,7 @@
                                     <span>MX</span>
                                 </button>
                                 <button type="button" class="player-card dropdown-item" role="menuitem" onclick="n_player()">
-                                    <img src="https://i.ibb-co/Hd2dS4t/nPlayer.png" alt="nPlayer" />
+                                    <img src="https://i.ibb.co/Hd2dS4t/nPlayer.png" alt="nPlayer" />
                                     <span>nPlayer</span>
                                 </button>
                                 <button type="button" class="player-card dropdown-item" role="menuitem" onclick="km_player()">
@@ -180,7 +180,7 @@
                     <button type="button" class="button-base" onclick="copyStreamLink()">
                         <img src="https://i.ibb.co/YTqX5QWk/link.png" alt="Copy Link" />Copy Link
                     </button>
-                </div>
+                </nav>
             </div>
             <div class="abt">
                 <div class="about">
