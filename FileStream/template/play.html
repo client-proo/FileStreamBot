@@ -1,40 +1,62 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="fa" data-theme="dark">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>LinkBolt Bot | {{file_name}}</title>
     <link rel="icon" href="https://i.ibb.co/Hh4kF2b/icon.png" type="image/x-icon" />
-    <link rel="shortcut icon" href="https://i.ibb.co/Hh4kF2b/icon.png" type="image/x-icon" />
-    <link rel="stylesheet" href="https://unpkg.com/sheryjs/dist/Shery.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/proavipatil/data@main/fs/src/style.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/proavipatil/data@main/fs/src/plyr.css" />
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" /> <!-- Plyr جدید -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/FileToLink/reqstyle.css" /> <!-- استایل دومین کد -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" /> <!-- آیکون‌ها -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;700&display=swap"
-        rel="stylesheet"
-    />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;700&display=swap" rel="stylesheet" />
     <style>
         footer .icons {
             gap: 8px !important;
             margin-bottom: 4px !important;
         }
-
         footer h5 {
             margin-top: 4px !important;
             font-family: 'Josefin Sans', sans-serif;
         }
+        /* استایل برای هماهنگی پخش‌کننده با ظاهر دومین کد */
+        .player-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .action-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+        }
+        .action-button img {
+            height: 24px;
+        }
     </style>
 </head>
-
 <body>
+    <!-- انیمیشن بارگذاری از دومین کد -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner">
+            <div></div>
+            <div></div>
+        </div>
+    </div>
+    <!-- پس‌زمینه گرادیان -->
+    <div class="bg-animation"><div class="bg-gradient"></div></div>
+    <!-- دکمه Dark Mode -->
+    <button class="toggle-dark-mode" onclick="toggleDarkMode()" aria-label="تغییر حالت روشن/تیره" title="تغییر حالت روشن/تیره">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <!-- نگه داشتن ساختار ناوبری اصلی -->
     <nav>
         <div class="nleft">
             <a href="#">
@@ -42,102 +64,76 @@
             </a>
         </div>
         <div class="nryt">
-            <a class="home-btn magnet" href="#main" onclick="toggleWidthnav(this)">HOME</a>
-            <a href="#abtus" class="about-btn magnet" onclick="toggleWidthnav(this)">ABOUT</a>
+            <a class="home-btn magnet" href="#main" onclick="toggleWidthnav(this)">خانه</a>
+            <a href="#abtus" class="about-btn magnet" onclick="toggleWidthnav(this)">درباره</a>
         </div>
     </nav>
     <center>
         <div class="about-nav">
-            <a href="#abtus" class="wlcm magnet" onclick="toggleWidth(this)">WELCOME</a>
-            <a href="#channels" class="abt-chnl magnet" onclick="toggleWidth(this)">CHANNELS</a>
-            <a href="#contact" class="magnet contact-btn" onclick="toggleWidth(this)">CONTACT</a>
+            <a href="#abtus" class="wlcm magnet" onclick="toggleWidth(this)">خوش‌آمد</a>
+            <a href="#channels" class="abt-chnl magnet" onclick="toggleWidth(this)">کانال‌ها</a>
+            <a href="#contact" class="magnet contact-btn" onclick="toggleWidth(this)">تماس</a>
         </div>
     </center>
 
     <div class="outer">
         <div class="inner">
             <div class="main" id="main">
-                <video
-                    id="player"
-                    class="player"
-                    src="{{file_url}}"
-                    type="video/mp4"
-                    playsinline
-                    controls
-                    width="100%"
-                ></video>
-                <div class="player"></div>
+                <!-- پخش‌کننده با استایل دومین کد -->
+                <div class="player-container">
+                    <video id="player" class="player" src="{{file_url}}" type="video/mp4" playsinline controls width="100%"></video>
+                </div>
                 <div class="file-name">
-                    <h4 style="display: inline;">File Name: </h4>
+                    <h4 style="display: inline;">نام فایل: </h4>
                     <p style="display: inline;" id="myDiv">{{file_name}}</p><br />
-                    <h4 style="display: inline;">File Size: </h4>
+                    <h4 style="display: inline;">حجم فایل: </h4>
                     <p style="display: inline;">{{file_size}}</p>
                 </div>
+                <!-- دکمه‌ها با استایل دومین کد -->
                 <div class="downloadBtn">
-                    <button class="magnet" onclick="streamDownload()">
-                        <img style="height: 30px;" src="https://i.ibb.co/RjzYttX/dl.png" alt="" />download video
+                    <button class="action-button secondary-button magnet" onclick="streamDownload()">
+                        <i class="fas fa-cloud-download-alt"></i><span>دانلود ویدیو</span>
                     </button>
-                    <button class="magnet" onclick="copyStreamLink()">
-                        <img src="https://i.ibb.co/CM4Y586/link.png" alt="Copy Link" />copy link
+                    <button class="action-button secondary-button magnet" onclick="copyStreamLink()">
+                        <i class="fas fa-link"></i><span>کپی لینک</span>
                     </button>
-                    <button class="magnet" onclick="vlc_player()">
-                        <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="" />watch in VLC PLAYER
+                    <button class="action-button secondary-button magnet" onclick="vlc_player()">
+                        <i class="fas fa-play-circle"></i><span>پخش در VLC</span>
                     </button>
-                    <button class="magnet" onclick="mx_player()">
-                        <img src="https://i.ibb.co/41WvtQ3/mx.png" alt="" />watch in MX PLAYER
+                    <button class="action-button secondary-button magnet" onclick="mx_player()">
+                        <i class="fas fa-play-circle"></i><span>پخش در MX Player</span>
                     </button>
-                    <button class="magnet" onclick="n_player()">
-                        <img src="https://i.ibb.co/Hd2dS4t/nPlayer.png" alt="" />watch in nPlayer
+                    <button class="action-button secondary-button magnet" onclick="n_player()">
+                        <i class="fas fa-play-circle"></i><span>پخش در nPlayer</span>
                     </button>
                 </div>
             </div>
+            <!-- بخش درباره و بقیه مثل کد اولی بدون تغییر -->
             <div class="abt">
                 <div class="about">
                     <div class="about-dets">
                         <div class="abt-sec" id="abtus" style="padding: 160px 30px;">
                             <h1 style="text-align: center;">
-                                WELCOME TO OUR <span>FILE STREAM</span> BOT
+                                خوش‌آمد به <span>بات استریم فایل</span> ما
                             </h1>
-                            <p
-                                style="
-                                    text-align: center;
-                                    line-height: 2;
-                                    word-spacing: 2px;
-                                    letter-spacing: 0.8px;
-                                "
-                            >
-                                This is a Telegram Bot to Stream
-                                <span>Movies</span> and <span>Series</span> directly on Telegram.
-                                You can also <span>download</span> them if you want. This bot is
-                                developed by
-                                <a href="https://t.me/mahdi79230"
-                                    ><span style="font-weight: 700;">☬ 𐎶𐏃𐎭𐎴 ☬</span></a
-                                ><br /><br />
-                                If you like this bot, then don't forget to share it with your friends
-                                and family.
+                            <p style="text-align: center; line-height: 2; word-spacing: 2px; letter-spacing: 0.8px;">
+                                این یک بات تلگرامی برای استریم <span>فیلم‌ها</span> و <span>سریال‌ها</span> مستقیم در تلگرام است.
+                                همچنین می‌توانید آن‌ها را <span>دانلود</span> کنید. این بات توسط
+                                <a href="https://t.me/mahdi79230"><span style="font-weight: 700;">☬ 𐎶𐏃𐎭𐎴 ☬</span></a> توسعه داده شده است.<br /><br />
+                                اگر این بات را دوست دارید، فراموش نکنید آن را با دوستان و خانواده خود به اشتراک بگذارید.
                             </p>
                         </div>
-
                         <div class="abt-sec" id="channels">
-                            <h1>
-                                JOIN OUR <span>TELEGRAM</span> CHANNELS
-                            </h1>
+                            <h1>به <span>کانال‌های تلگرامی</span> ما بپیوندید</h1>
                             <div class="links chnl-link">
-                                <a class="magnet" href="https://t.me/LinkBoltChannel">
-                                    <button>LinkBolt channel</button>
-                                </a>
-                                <a class="magnet" href="https://t.me/ISVvpn">
-                                    <button>ISVvpn</button>
-                                </a>
+                                <a class="magnet" href="https://t.me/LinkBoltChannel"><button>کانال LinkBolt</button></a>
+                                <a class="magnet" href="https://t.me/ISVvpn"><button>ISVvpn</button></a>
                             </div>
                         </div>
-
                         <div class="abt-sec" id="contact">
-                            <p style="text-align: center;">Report Bugs and Contact us on Telegram Below</p>
+                            <p style="text-align: center;">گزارش باگ‌ها و تماس با ما در تلگرام:</p>
                             <div class="links contact">
-                                <a href="https://t.me/mahdi79230">
-                                    <button>CONTACT</button>
-                                </a>
+                                <a href="https://t.me/mahdi79230"><button>تماس</button></a>
                             </div>
                         </div>
                     </div>
@@ -145,13 +141,11 @@
             </div>
         </div>
 
+        <!-- فوتر بدون تغییر -->
         <footer>
             <center>
                 <div class="copyright" style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
-                    <div
-                        class="icons"
-                        style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; margin-top: 0;"
-                    >
+                    <div class="icons" style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; margin-top: 0;">
                         <a href="https://t.me/LinkBoltChannel" target="_blank" style="margin: 0;">
                             <i class="fa-brands fa-telegram fa-lg"></i>
                         </a>
@@ -160,24 +154,43 @@
                         </a>
                     </div>
                     <h5 class="text-center" style="margin: 0;">
-                        Copyright © 2025
-                        <a href="https://t.me/LinkBoltChannel">
-                            <span style="font-weight: 700;">LinkBolt</span>
-                        </a>
-                        . All Rights Reserved.
+                        کپی‌رایت © ۲۰۲۵
+                        <a href="https://t.me/LinkBoltChannel"><span style="font-weight: 700;">LinkBolt</span></a>.
+                        تمامی حقوق محفوظ است.
                     </h5>
                 </div>
             </center>
         </footer>
     </div>
+
+    <!-- اسکریپت‌ها -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.155.0/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/automat/controlkit.js@master/bin/controlKit.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sheryjs/dist/Shery.js"></script>
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script> <!-- Plyr جدید -->
+    <script src="https://proavipatil.github.io/data/fs/src/script.js"></script>
+    <!-- اسکریپت برای Dark Mode از دومین کد -->
+    <script>
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            document.querySelector('.toggle-dark-mode i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+        }
+        // مقداردهی اولیه پخش‌کننده Plyr
+        document.addEventListener('DOMContentLoaded', () => {
+            const player = new Plyr('#player', {
+                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'fullscreen'],
+                settings: ['quality', 'speed'],
+                quality: { default: 720, options: [1080, 720, 480, 360] }
+            });
+            // مخفی کردن انیمیشن بارگذاری پس از لود
+            setTimeout(() => {
+                document.getElementById('loading-overlay').style.display = 'none';
+            }, 1000);
+        });
+    </script>
 </body>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.155.0/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/automat/controlkit.js@master/bin/controlKit.min.js"></script>
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sheryjs/dist/Shery.js"></script>
-<script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
-<script src="https://proavipatil.github.io/data/fs/src/script.js"></script>
-
 </html>
