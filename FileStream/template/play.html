@@ -1,199 +1,175 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LinkBolt Bot | {{file_name}}</title>
-    <link rel="icon" href="https://i.ibb.co/Hh4kF2b/icon.png" type="image/x-icon" />
-    <link rel="shortcut icon" href="https://i.ibb.co/Hh4kF2b/icon.png" type="image/x-icon" />
-    <link rel="stylesheet" href="https://unpkg.com/sheryjs/dist/Shery.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/FileToLink/reqstyle.css" /> <!-- Second code's style -->
-    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" /> <!-- Updated Plyr -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
-    <style>
-        footer .icons {
-            gap: 8px !important;
-            margin-bottom: 4px !important;
-        }
-        footer h5 {
-            margin-top: 4px !important;
-            font-family: 'Josefin Sans', sans-serif;
-        }
-        /* Adjust buttons to match second code's style */
-        .downloadBtn button {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            margin: 5px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-family: 'Inter', sans-serif;
-        }
-        .downloadBtn button img {
-            height: 24px;
-        }
-    </style>
-</head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ heading }}</title>
 
+    <meta name="description" content="Easily share and distribute files">
+    <meta property="og:title" content="Thunder FileToLink">
+    <meta property="og:description" content="File Streamer">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/FileToLink/live.png">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="msapplication-navbutton-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#1a1a2e">
+    <meta name="color-scheme" content="dark light">
+    <meta name="application-name" content="Thunder FileToLink">
+
+    <link rel="icon" href="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/FileToLink/Thunder.jpg">
+    <link rel="apple-touch-icon" href="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/FileToLink/Thunder.jpg">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/FileToLink/reqstyle.css">
+</head>
 <body>
-    <!-- Loading overlay from second code -->
     <div class="loading-overlay" id="loading-overlay">
         <div class="loading-spinner">
             <div></div>
             <div></div>
         </div>
     </div>
-    <!-- Background animation from second code -->
+    <button class="toggle-dark-mode" onclick="app.toggleDarkMode()" aria-label="Toggle Light/Dark Mode" aria-pressed="false" title="Toggle Light/Dark Mode"><i class="fas fa-moon"></i></button>
     <div class="bg-animation"><div class="bg-gradient"></div></div>
-    <!-- Dark mode toggle from second code -->
-    <button class="toggle-dark-mode" onclick="toggleDarkMode()" aria-label="Toggle Light/Dark Mode" title="Toggle Light/Dark Mode">
-        <i class="fas fa-moon"></i>
-    </button>
 
-    <nav>
-        <div class="nleft">
-            <a href="#">
-                <h3 id="heading" style="z-index: 100;" class="magnet title">LinkBolt</h3>
-            </a>
-        </div>
-        <div class="nryt">
-            <a class="home-btn magnet" href="#main" onclick="toggleWidthnav(this)">HOME</a>
-            <a href="#abtus" class="about-btn magnet" onclick="toggleWidthnav(this)">ABOUT</a>
-        </div>
-    </nav>
-    <center>
-        <div class="about-nav">
-            <a href="#abtus" class="wlcm magnet" onclick="toggleWidth(this)">WELCOME</a>
-            <a href="#channels" class="abt-chnl magnet" onclick="toggleWidth(this)">CHANNELS</a>
-            <a href="#contact" class="magnet contact-btn" onclick="toggleWidth(this)">CONTACT</a>
-        </div>
-    </center>
-
-    <div class="outer">
-        <div class="inner">
-            <div class="main" id="main">
-                <!-- Player wrapped in second code's container -->
-                <div class="player-container">
-                    <video id="player" class="player" src="{{file_url}}" type="video/mp4" playsinline controls width="100%"></video>
-                    <div class="player"></div>
-                </div>
-                <div class="file-name">
-                    <h4 style="display: inline;">File Name: </h4>
-                    <p style="display: inline;" id="myDiv">{{file_name}}</p><br />
-                    <h4 style="display: inline;">File Size: </h4>
-                    <p style="display: inline;">{{file_size}}</p>
-                </div>
-                <div class="downloadBtn">
-                    <button class="action-button secondary-button magnet" onclick="streamDownload()">
-                        <img style="height: 30px;" src="https://i.ibb.co/RjzYttX/dl.png" alt="" />download video
-                    </button>
-                    <button class="action-button secondary-button magnet" onclick="copyStreamLink()">
-                        <img src="https://i.ibb.co/CM4Y586/link.png" alt="Copy Link" />copy link
-                    </button>
-                    <button class="action-button secondary-button magnet" onclick="vlc_player()">
-                        <img src="https://i.ibb.co/px6fQs1/vlc.png" alt="" />watch in VLC PLAYER
-                    </button>
-                    <button class="action-button secondary-button magnet" onclick="mx_player()">
-                        <img src="https://i.ibb.co/41WvtQ3/mx.png" alt="" />watch in MX PLAYER
-                    </button>
-                    <button class="action-button secondary-button magnet" onclick="n_player()">
-                        <img src="https://i.ibb.co/Hd2dS4t/nPlayer.png" alt="" />watch in nPlayer
-                    </button>
-                </div>
+    <div class="container">
+        <header class="header">
+            <div class="file-info">
+                <h1 id="file-name">{{ file_name }}</h1>
+                <div class="file-meta"></div>
             </div>
-            <div class="abt">
-                <div class="about">
-                    <div class="about-dets">
-                        <div class="abt-sec" id="abtus" style="padding: 160px 30px;">
-                            <h1 style="text-align: center;">
-                                WELCOME TO OUR <span>FILE STREAM</span> BOT
-                            </h1>
-                            <p style="text-align: center; line-height: 2; word-spacing: 2px; letter-spacing: 0.8px;">
-                                This is a Telegram Bot to Stream
-                                <span>Movies</span> and <span>Series</span> directly on Telegram.
-                                You can also <span>download</span> them if you want. This bot is
-                                developed by
-                                <a href="https://t.me/mahdi79230"><span style="font-weight: 700;">☬ 𐎶𐏃𐎭𐎴 ☬</span></a><br /><br />
-                                If you like this bot, then don't forget to share it with your friends
-                                and family.
-                            </p>
-                        </div>
+        </header>
 
-                        <div class="abt-sec" id="channels">
-                            <h1>
-                                JOIN OUR <span>TELEGRAM</span> CHANNELS
-                            </h1>
-                            <div class="links chnl-link">
-                                <a class="magnet" href="https://t.me/LinkBoltChannel">
-                                    <button>LinkBolt channel</button>
-                                </a>
-                                <a class="magnet" href="https://t.me/ISVvpn">
-                                    <button>ISVvpn</button>
-                                </a>
+        <main id="main-content" role="main" aria-label="Main content">
+            <div class="file-meta"></div>
+            </div>
+        </header>
+
+        <main id="main-content" role="main" aria-label="Main content">
+            <div class="file-meta"></div>
+            </div>
+        </header>
+
+        <main id="main-content" role="main" aria-label="Main content">
+            <div class="player-container">
+                <{{ tag }} id="player" playsinline controls preload="metadata" controlsList="nodownload">
+                <source src="{{ src }}" type="{{ video }}/mp4">
+                    Your browser does not support the {{ tag }} tag.
+                </{{ tag }}>
+            </div>
+
+            <section class="controls-section" aria-label="File options">
+                <div class="dropdown-container" id="stream-dropdown-container">
+                    <button type="button" class="action-button secondary-button stream-btn" onclick="app.toggleStreamMenu(event)" aria-haspopup="true" aria-expanded="false" aria-controls="stream-menu" id="stream-btn-label">
+                        <i class="fas fa-play-circle" aria-hidden="true"></i><span>Stream</span>
+                    </button>
+                    <div class="dropdown-menu" id="stream-menu" aria-labelledby="stream-btn-label">
+                        <div class="stream-menu-header">
+                            <h3>Open with external player</h3>
+                            <button type="button" aria-label="Close menu" onclick="app.closeStreamMenu()" class="stream-menu-close">
+                                <i class="fas fa-times" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <div class="stream-menu-content" role="menu">
+                            <div class="stream-category">
+                                <div class="category-heading" role="presentation">
+                                    <i class="fas fa-desktop" aria-hidden="true"></i>
+                                    <span>Desktop Players</span>
+                                </div>
+                                <div class="player-grid">
+                                    <button type="button" class="player-card dropdown-item" tabindex="0" role="menuitem" onclick="app.playOnline('vlc-pc')" title="Open in VLC Player (PC)">
+                                        <div class="player-icon">
+                                            <img src="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/HydroStreamerBot/vlc.png" alt="VLC Player icon" loading="lazy" width="32" height="32">
+                                        </div>
+                                        <span class="player-name">VLC Player</span>
+                                    </button>
+                                    <button type="button" class="player-card dropdown-item" tabindex="0" role="menuitem" onclick="app.playOnline('potplayer')" title="Open in PotPlayer">
+                                        <div class="player-icon">
+                                            <img src="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/FileToLink/pot.png" alt="PotPlayer icon" loading="lazy" width="32" height="32">
+                                        </div>
+                                        <span class="player-name">PotPlayer</span>
+                                    </button>
+                                    <button type="button" class="player-card dropdown-item" tabindex="0" role="menuitem" onclick="app.playOnline('mpc')" title="Open in MPC-HC">
+                                        <div class="player-icon">
+                                            <img src="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/FileToLink/classic.png" alt="MPC-HC icon" loading="lazy" width="32" height="32">
+                                        </div>
+                                        <span class="player-name">MPC-HC</span>
+                                    </button>
+                                    <button type="button" class="player-card dropdown-item" tabindex="0" role="menuitem" onclick="app.playOnline('kmpc')" title="Open in KM Player (PC)">
+                                        <div class="player-icon">
+                                            <img src="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/HydroStreamerBot/km.webp" alt="KM Player icon" loading="lazy" width="32" height="32">
+                                        </div>
+                                        <span class="player-name">KM Player</span>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="abt-sec" id="contact">
-                            <p style="text-align: center;">Report Bugs and Contact us on Telegram Below</p>
-                            <div class="links contact">
-                                <a href="https://t.me/mahdi79230">
-                                    <button>CONTACT</button>
-                                </a>
+                            <div class="stream-category">
+                                <div class="category-heading" role="presentation">
+                                    <i class="fas fa-mobile-alt" aria-hidden="true"></i>
+                                    <span>Mobile Players</span>
+                                </div>
+                                <div class="player-grid">
+                                    <button type="button" class="player-card dropdown-item" tabindex="0" role="menuitem" onclick="app.playOnline('vlc')">
+                                        <div class="player-icon">
+                                            <img src="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/HydroStreamerBot/vlc.png" alt="VLC Mobile icon" loading="lazy" width="32" height="32">
+                                        </div>
+                                        <span class="player-name">VLC Mobile</span>
+                                    </button>
+                                    <button type="button" class="player-card dropdown-item" tabindex="0" role="menuitem" onclick="app.playOnline('mxpro')">
+                                        <div class="player-icon">
+                                            <img src="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/HydroStreamerBot/mx.png" alt="MX Pro icon" loading="lazy" width="32" height="32">
+                                        </div>
+                                        <span class="player-name">MX Pro</span>
+                                    </button>
+                                    <button type="button" class="player-card dropdown-item" tabindex="0" role="menuitem" onclick="app.playOnline('mx')">
+                                        <div class="player-icon">
+                                            <img src="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/HydroStreamerBot/mx.png" alt="MX Player icon" loading="lazy" width="32" height="32">
+                                        </div>
+                                        <span class="player-name">MX Player</span>
+                                    </button>
+                                    <button type="button" class="player-card dropdown-item" tabindex="0" role="menuitem" onclick="app.playOnline('nplayer')">
+                                        <div class="player-icon">
+                                            <img src="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/HydroStreamerBot/nPlayer.webp" alt="nPlayer icon" loading="lazy" width="32" height="32">
+                                        </div>
+                                        <span class="player-name">nPlayer</span>
+                                    </button>
+                                    <button type="button" class="player-card dropdown-item" tabindex="0" role="menuitem" onclick="app.playOnline('splayer')">
+                                        <div class="player-icon">
+                                            <img src="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/HydroStreamerBot/splayer.webp" alt="S Player icon" loading="lazy" width="32" height="32">
+                                        </div>
+                                        <span class="player-name">S Player</span>
+                                    </button>
+                                    <button type="button" class="player-card dropdown-item" tabindex="0" role="menuitem" onclick="app.playOnline('km')">
+                                        <div class="player-icon">
+                                            <img src="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/HydroStreamerBot/km.webp" alt="KM Player Mobile icon" loading="lazy" width="32" height="32">
+                                        </div>
+                                        <span class="player-name">KM Player</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <footer>
-            <center>
-                <div class="copyright" style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
-                    <div class="icons" style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; margin-top: 0;">
-                        <a href="https://t.me/LinkBoltChannel" target="_blank" style="margin: 0;">
-                            <i class="fa-brands fa-telegram fa-lg"></i>
-                        </a>
-                        <a href="https://www.instagram.com/avisekeditx" target="_blank" style="margin: 0;">
-                            <i class="fa-brands fa-square-instagram fa-lg"></i>
-                        </a>
-                    </div>
-                    <h5 class="text-center" style="margin: 0;">
-                        Copyright © 2025
-                        <a href="https://t.me/LinkBoltChannel">
-                            <span style="font-weight: 700;">LinkBolt</span>
-                        </a>
-                        . All Rights Reserved.
-                    </h5>
-                </div>
-            </center>
-        </footer>
+                <button type="button" class="action-button secondary-button" onclick="app.download()" title="Download the video"><i class="fas fa-cloud-download-alt" aria-hidden="true"></i><span>Download</span></button>
+                <button type="button" class="action-button secondary-button" onclick="app.copyLink()" title="Copy video link"><i class="fas fa-link" aria-hidden="true"></i><span>Copy Link</span></button>
+            </section>
+        </main>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.155.0/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/automat/controlkit.js@master/bin/controlKit.min.js"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sheryjs/dist/Shery.js"></script>
+    <footer>
+        <p>Made by LinkBolt Bot © 2025 | <a href="https://t.me/LinkBoltChannel" target="_blank" rel="noopener noreferrer">
+  <i class="fab fa-telegram" aria-hidden="true"></i> Telegram
+</a>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite" aria-hidden="true">
+        <div class="toast-icon" aria-hidden="true"><i class="fas fa-info-circle"></i></div>
+        <div class="toast-message">Action completed.</div>
+    </div>
+
     <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
-    <script src="https://proavipatil.github.io/data/fs/src/script.js"></script>
-    <script>
-        // Dark mode toggle
-        function toggleDarkMode() {
-            const html = document.documentElement;
-            const isDark = html.getAttribute('data-theme') === 'dark';
-            html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-            this.querySelector('i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
-        }
-        // Initialize Plyr
-        const player = new Plyr('#player');
-        // Hide loading overlay
-        window.addEventListener('load', () => {
-            document.getElementById('loading-overlay').style.display = 'none';
-        });
-    </script>
+    <script src="https://cdn.jsdelivr.net/gh/fyaz05/Resources@main/FileToLink/reqscript.js"></script>
 </body>
 </html>
