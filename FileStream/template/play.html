@@ -12,9 +12,15 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/proavipatil/data@main/fs/src/plyr.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;700&display=swap" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;700&display=swap"
+        rel="stylesheet"
+    />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <style>
         footer .icons {
             gap: 8px !important;
@@ -34,25 +40,6 @@
             height: 30px !important; /* ارتفاع ثابت برای همه آیکون‌ها */
             object-fit: contain; /* حفظ تناسب تصویر */
             vertical-align: middle; /* تراز عمودی با متن */
-        }
-
-        .downloadBtn a {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 50px;
-            background-color: #007bff; /* رنگ پیش‌فرض ثابت */
-            color: #ffffff; /* رنگ متن ثابت */
-            text-decoration: none;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        .downloadBtn a:hover {
-            background-color: #0056b3; /* رنگ هور ثابت */
         }
     </style>
 </head>
@@ -101,16 +88,16 @@
                         <img src="https://i.ibb.co/rRHN89YS/dl.png" alt="download video" />download video
                     </button>
                     <button class="magnet" onclick="copyStreamLink()">
-                        <img src="https://i.ibb-co/YTqX5QWk/link.png" alt="Copy Link" />copy link
+                        <img src="https://i.ibb.co/YTqX5QWk/link.png" alt="Copy Link" />copy link
                     </button>
-                    <a onclick="vlc_player()" class="btn btn-primary flex-fill">
-                        <i class="fa fa-play"></i> <b>VLC Player</b>
-                    </a>
+                    <button class="magnet" onclick="vlc_player()">
+                        <img src="https://i.ibb.co/JjqHGGhV/vlc.png" alt="watch in VLC PLAYER" />watch in VLC PLAYER
+                    </button>
                     <button class="magnet" onclick="mx_player()">
-                        <img src="https://i.ibb-co/41WvtQ3/mx.png" alt="watch in MX PLAYER" />watch in MX PLAYER
+                        <img src="https://i.ibb.co/41WvtQ3/mx.png" alt="watch in MX PLAYER" />watch in MX PLAYER
                     </button>
                     <button class="magnet" onclick="km_player()">
-                        <img src="https://i.ibb-co/Cs9HcGXL/KMPlayer.png" alt="watch in KM Player" />watch in KM Player
+                        <img src="https://i.ibb.co/Cs9HcGXL/KMPlayer.png" alt="watch in KM Player" />watch in KM Player
                     </button>
                 </div>
             </div>
@@ -202,33 +189,5 @@
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sheryjs/dist/Shery.js"></script>
 <script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
 <script src="https://proavipatil.github.io/data/fs/src/script.js"></script>
-<script>
-    // پیاده‌سازی توابع برای باز کردن پخش‌کننده‌ها
-    function vlc_player() {
-        const videoUrl = '{{file_url}}';
-        window.location.href = `vlc://${encodeURIComponent(videoUrl)}`;
-    }
-
-    function mx_player() {
-        const videoUrl = '{{file_url}}';
-        window.location.href = `intent://${encodeURIComponent(videoUrl)}#Intent;package=com.mxtech.videoplayer.ad;end`;
-    }
-
-    function km_player() {
-        const videoUrl = '{{file_url}}';
-        window.location.href = `kmp://${encodeURIComponent(videoUrl)}`;
-    }
-
-    function streamDownload() {
-        const videoUrl = '{{file_url}}';
-        window.location.href = videoUrl;
-    }
-
-    function copyStreamLink() {
-        navigator.clipboard.writeText('{{file_url}}').then(() => {
-            alert('Link copied to clipboard');
-        });
-    }
-</script>
 
 </html>
