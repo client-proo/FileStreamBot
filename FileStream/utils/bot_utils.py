@@ -173,7 +173,7 @@ async def is_user_authorized(message):
 
         if not (user_id in Telegram.AUTH_USERS):
             await message.reply_text(
-                text="Yᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ʙᴏᴛ.",
+                text=شما مجاز به استفاده از این ربات نیستید.",
                 parse_mode=ParseMode.MARKDOWN,
                 disable_web_page_preview=True
             )
