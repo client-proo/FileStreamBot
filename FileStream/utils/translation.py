@@ -1,6 +1,5 @@
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from FileStream.config import Telegram
-from datetime import datetime, timedelta
 
 class LANG(object):
 
@@ -29,7 +28,6 @@ class LANG(object):
 <b>📥 لینک دانلود :</b> <code>{}</code>\n
 <b>🖥️ پخش آنلاین :</b> <code>{}</code>\n
 <b>🔗 اشتراک گذاری :</b> <code>{}</code>\n
-<b>🕒 زمان انقضا :</b> <code>{}</code>\n
 <b>⌛️ توجه : لینک شما پس از 24 ساعت منقضی خواهد شد.</b>\n"""
 
     STREAM_TEXT_X = """
@@ -38,7 +36,6 @@ class LANG(object):
 <b>📦 حجم فایل :</b> <code>{}</code>\n
 <b>📥 لینک دانلود :</b> <code>{}</code>\n
 <b>🔗 اشتراک گذاری :</b> <code>{}</code>\n
-<b>🕒 زمان انقضا :</b> <code>{}</code>\n
 <b>⌛️ توجه : لینک شما پس از 24 ساعت منقضی خواهد شد.</b>\n"""
 
 
