@@ -89,7 +89,7 @@ async def gen_link(_id):
     page_link = f"{Server.URL}watch/{_id}"
     stream_link = f"{Server.URL}dl/{_id}"
     file_link = f"https://t.me/{FileStream.username}?start=file_{_id}"
-    expire_str = (datetime.utcnow() + timedelta(hours=6)).strftime("%H:%M:%S %d-%m-%Y")
+    expire_str = (datetime.utcnow() + timedelta(seconds=60)).strftime("%Y-%m-%d %H:%M:%S")
     if "video" in mime_type:
         stream_text = LANG.STREAM_TEXT.format(file_name, file_size, stream_link, page_link, file_link, expire_str)
         reply_markup = InlineKeyboardMarkup(
