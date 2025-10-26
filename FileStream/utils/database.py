@@ -1,6 +1,5 @@
 import pymongo
 import time
-from datetime import datetime, timedelta
 import motor.motor_asyncio
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
@@ -66,19 +65,13 @@ class Database:
     async def total_banned_users_count(self):
         count = await self.black.count_documents({})
         return count
-
+        
 # ---------------------[ ADD FILE TO DB ]---------------------#
     async def add_file(self, file_info):
         file_info["time"] = time.time()
-        file_info["expire_at"] = datetime.utcnow() + timedelta(hours=6)
-
-        fetch_old = await self.get_file_by_fileuniqueid(
-            file_info["user_id"], 
-            file_info["file_unique_id"]
-        )
+        fetch_old = await self.get_file_by_fileuniqueid(file_info["user_id"], file_info["file_unique_id"])
         if fetch_old:
             return fetch_old["_id"]
-
         await self.count_links(file_info["user_id"], "+")
         return (await self.file.insert_one(file_info)).inserted_id
 
@@ -99,7 +92,7 @@ class Database:
             return file_info
         except InvalidId:
             raise FIleNotFound
-
+    
     async def get_file_by_fileuniqueid(self, id, file_unique_id, many=False):
         if many:
             return self.file.find({"file_unique_id": file_unique_id})
@@ -133,7 +126,7 @@ class Database:
 #             if files < 11:
 #                 return True
 #             return False
-
+        
     async def count_links(self, id, operation: str):
         if operation == "-":
             await self.col.update_one({"id": id}, {"$inc": {"Links": -1}})
