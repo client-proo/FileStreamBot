@@ -3,7 +3,6 @@ import math
 import logging
 import mimetypes
 import traceback
-from datetime import datetime
 from aiohttp import web
 from aiohttp.http_exceptions import BadStatusLine
 from FileStream.bot import multi_clients, work_loads, FileStream
@@ -13,7 +12,6 @@ from FileStream import utils, StartTime, __version__
 from FileStream.utils.render_template import render_page
 
 routes = web.RouteTableDef()
-
 
 @routes.get("/status", allow_head=True)
 async def root_route_handler(_):
@@ -33,12 +31,11 @@ async def root_route_handler(_):
         }
     )
 
-
 @routes.get("/watch/{path}", allow_head=True)
 async def stream_handler(request: web.Request):
     try:
         path = request.match_info["path"]
-        return web.Response(text=await render_page(path), content_type="text/html")
+        return web.Response(text=await render_page(path), content_type='text/html')
     except InvalidHash as e:
         raise web.HTTPForbidden(text=e.message)
     except FIleNotFound as e:
@@ -64,9 +61,7 @@ async def stream_handler(request: web.Request):
         logging.debug(traceback.format_exc())
         raise web.HTTPInternalServerError(text=str(e))
 
-
 class_cache = {}
-
 
 async def media_streamer(request: web.Request, db_id: str):
     range_header = request.headers.get("Range", 0)
@@ -75,9 +70,7 @@ async def media_streamer(request: web.Request, db_id: str):
     faster_client = multi_clients[index]
 
     if Telegram.MULTI_CLIENT:
-        logging.info(
-            f"Client {index} is now serving {request.headers.get('X-FORWARDED-FOR', request.remote)}"
-        )
+        logging.info(f"Client {index} is now serving {request.headers.get('X-FORWARDED-FOR',request.remote)}")
 
     if faster_client in class_cache:
         tg_connect = class_cache[faster_client]
@@ -86,17 +79,9 @@ async def media_streamer(request: web.Request, db_id: str):
         logging.debug(f"Creating new ByteStreamer object for client {index}")
         tg_connect = utils.ByteStreamer(faster_client)
         class_cache[faster_client] = tg_connect
-
     logging.debug("before calling get_file_properties")
     file_id = await tg_connect.get_file_properties(db_id, multi_clients)
     logging.debug("after calling get_file_properties")
-
-    file_doc = await FileStream.db.get_file_by_fileuniqueid(
-        user_id=None, file_unique_id=db_id, many=False
-    )
-    if file_doc and file_doc.get("expire_at") and datetime.utcnow() > file_doc["expire_at"]:
-        await FileStream.db.file.delete_one({"file_unique_id": db_id})
-        raise web.HTTPGone(text="Link expired! This file is no longer available.")
 
     file_size = file_id.file_size
 
@@ -134,6 +119,9 @@ async def media_streamer(request: web.Request, db_id: str):
 
     if not mime_type:
         mime_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+
+    # if "video/" in mime_type or "audio/" in mime_type:
+    #     disposition = "inline"
 
     return web.Response(
         status=206 if range_header else 200,
