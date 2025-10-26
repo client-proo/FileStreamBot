@@ -3,6 +3,7 @@ import math
 import logging
 import mimetypes
 import traceback
+from datetime import datetime
 from aiohttp import web
 from aiohttp.http_exceptions import BadStatusLine
 from FileStream.bot import multi_clients, work_loads, FileStream
@@ -82,6 +83,16 @@ async def media_streamer(request: web.Request, db_id: str):
     logging.debug("before calling get_file_properties")
     file_id = await tg_connect.get_file_properties(db_id, multi_clients)
     logging.debug("after calling get_file_properties")
+
+
+    file_doc = await FileStream.db.get_file_by_fileuniqueid(
+        user_id=None, file_unique_id=db_id, many=False
+    )
+    if file_doc and file_doc.get("expire_at"):
+        if datetime.utcnow() > file_doc["expire_at"]:
+            await FileStream.db.file.delete_one({"file_unique_id": db_id})
+            raise web.HTTPGone(text="Link expired! This file is no longer available.")
+
 
     file_size = file_id.file_size
 
