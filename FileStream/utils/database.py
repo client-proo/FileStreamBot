@@ -146,6 +146,7 @@ class Database:
             return False
         last_time = await self.get_user_last_link_time(user_id)
         return (time.time() - last_time) < Telegram.USER_COOLDOWN_SECONDS
+
 # ---------------------[ PAID SYS ]---------------------#
 #     async def link_available(self, id):
 #         user = await self.col.find_one({"id": id})
