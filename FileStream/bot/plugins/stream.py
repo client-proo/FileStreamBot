@@ -1,131 +1,148 @@
-import jdatetime
-import time
-import asyncio
-from FileStream.bot import FileStream, multi_clients
-from FileStream.utils.bot_utils import is_user_banned, is_user_exist, is_user_joined, gen_link, is_channel_banned, is_channel_exist, is_user_authorized
-from FileStream.utils.database import Database
-from FileStream.utils.file_properties import get_file_ids, get_file_info
+import logging
+import math
+from FileStream import __version__
+from FileStream.bot import FileStream
+from FileStream.server.exceptions import FIleNotFound
+from FileStream.utils.bot_utils import gen_linkx, verify_user
 from FileStream.config import Telegram
+from FileStream.utils.database import Database
+from FileStream.utils.translation import LANG, BUTTON
 from pyrogram import filters, Client
-from pyrogram.errors import FloodWait
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from pyrogram.enums.parse_mode import ParseMode
+import asyncio
+
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 
-@FileStream.on_message(
-    filters.private
-    & (
-            filters.document
-            | filters.video
-            | filters.video_note
-            | filters.audio
-            | filters.voice
-            | filters.animation
-            | filters.photo
-    ),
-    group=4,
-)
-async def private_receive_handler(bot: Client, message: Message):
-    if not await is_user_authorized(message):
+@FileStream.on_message(filters.command('start') & filters.private)
+async def start(bot: Client, message: Message):
+    if not await verify_user(bot, message):
         return
-    if await is_user_banned(message):
+    usr_cmd = message.text.split("_")[-1]
+
+    if usr_cmd == "/start":
+        if Telegram.START_PIC:
+            await message.reply_photo(
+                photo=Telegram.START_PIC,
+                caption=LANG.START_TEXT.format(message.from_user.mention, FileStream.username),
+                parse_mode=ParseMode.HTML,
+                reply_markup=BUTTON.START_BUTTONS
+            )
+        else:
+            await message.reply_text(
+                text=LANG.START_TEXT.format(message.from_user.mention, FileStream.username),
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True,
+                reply_markup=BUTTON.START_BUTTONS
+            )
+    else:
+        if "stream_" in message.text:
+            try:
+                file_check = await db.get_file(usr_cmd)
+                file_id = str(file_check['_id'])
+                if file_id == usr_cmd:
+                    reply_markup, stream_text = await gen_linkx(m=message, _id=file_id,
+                                                                name=[FileStream.username, FileStream.fname])
+                    await message.reply_text(
+                        text=stream_text,
+                        parse_mode=ParseMode.HTML,
+                        disable_web_page_preview=True,
+                        reply_markup=reply_markup,
+                        quote=True
+                    )
+
+            except FIleNotFound as e:
+                await message.reply_text("File Not Found")
+            except Exception as e:
+                await message.reply_text("Something Went Wrong")
+                logging.error(e)
+
+        elif "file_" in message.text:
+            try:
+                file_check = await db.get_file(usr_cmd)
+                db_id = str(file_check['_id'])
+                file_id = file_check['file_id']
+                file_name = file_check['file_name']
+                if db_id == usr_cmd:
+                    filex = await message.reply_cached_media(file_id=file_id, caption=f'**{file_name}**')
+                    await asyncio.sleep(3600)
+                    try:
+                        await filex.delete()
+                        await message.delete()
+                    except Exception:
+                        pass
+
+            except FIleNotFound as e:
+                await message.reply_text("**File Not Found**")
+            except Exception as e:
+                await message.reply_text("Something Went Wrong")
+                logging.error(e)
+
+        else:
+            await message.reply_text(f"**Invalid Command**")
+
+@FileStream.on_message(filters.private & filters.command(["about"]))
+async def start(bot, message):
+    if not await verify_user(bot, message):
         return
-
-    await is_user_exist(bot, message)
-    if Telegram.FORCE_SUB:
-        if not await is_user_joined(bot, message):
-            return
-
-    # آنتی اسپم هوشمند
-    if Telegram.SPAM_PROTECTION and await db.is_user_on_cooldown(message.from_user.id):
-        last_time = await db.get_user_last_link_time(message.from_user.id)
-        remaining = int(Telegram.USER_COOLDOWN_SECONDS - (time.time() - last_time))
-        hours = remaining // 3600
-        mins = (remaining % 3600) // 60
-        secs = remaining % 60
-
-        time_text = ""
-        if hours: time_text += f"{hours} ساعت "
-        if mins: time_text += f"{mins} دقیقه "
-        if secs: time_text += f"{secs} ثانیه"
-
-        await message.reply_text(
-            f"<b>آنتی اسپم فعال است!</b>\n\n"
-            f"هر <b>{Telegram.USER_COOLDOWN_SECONDS // 3600} ساعت</b> فقط یک لینک\n\n"
-            f"<b>زمان باقی‌مانده:</b>\n"
-            f"<code>{time_text.strip()}</code>",
+    if Telegram.START_PIC:
+        await message.reply_photo(
+            photo=Telegram.START_PIC,
+            caption=LANG.ABOUT_TEXT.format(FileStream.fname, __version__),
             parse_mode=ParseMode.HTML,
-            quote=True
+            reply_markup=BUTTON.ABOUT_BUTTONS
         )
-        return
+    else:
+        await message.reply_text(
+            text=LANG.ABOUT_TEXT.format(FileStream.fname, __version__),
+            disable_web_page_preview=True,
+            reply_markup=BUTTON.ABOUT_BUTTONS
+        )
 
-    try:
-        # لینک با انقضای زمانی
-        inserted_id = await db.add_file(get_file_info(message), expire_seconds=Telegram.LINK_EXPIRE_SECONDS)
-        await get_file_ids(False, inserted_id, multi_clients, message)
-        reply_markup, stream_text = await gen_link(_id=inserted_id)
-        reply_msg = await message.reply_text(
-            text=stream_text,
+@FileStream.on_message((filters.command('help')) & filters.private)
+async def help_handler(bot, message):
+    if not await verify_user(bot, message):
+        return
+    if Telegram.START_PIC:
+        await message.reply_photo(
+            photo=Telegram.START_PIC,
+            caption=LANG.HELP_TEXT.format(Telegram.OWNER_ID),
+            parse_mode=ParseMode.HTML,
+            reply_markup=BUTTON.HELP_BUTTONS
+        )
+    else:
+        await message.reply_text(
+            text=LANG.HELP_TEXT.format(Telegram.OWNER_ID),
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
-            reply_markup=reply_markup,
-            quote=True
+            reply_markup=BUTTON.HELP_BUTTONS
         )
 
-        # حذف خودکار بعد از انقضا
-        await asyncio.sleep(Telegram.LINK_EXPIRE_SECONDS)
-        try:
-            await reply_msg.delete()
-            await db.delete_one_file(inserted_id)
-            await db.count_links(message.from_user.id, "-")
-        except:
-            pass
+# ---------------------------------------------------------------------------------------------------
 
-    except FloodWait as e:
-        print(f"Sleeping for {str(e.value)}s")
-        await asyncio.sleep(e.value)
-        await bot.send_message(chat_id=Telegram.ULOG_CHANNEL,
-                               text=f"Gᴏᴛ FʟᴏᴏᴅWᴀɪᴛ ᴏғ {str(e.value)}s ғʀᴏᴍ [{message.from_user.first_name}](tg://user?id={message.from_user.id})\n\n**ᴜsᴇʀ ɪᴅ :** `{str(message.from_user.id)}`",
-                               disable_web_page_preview=True, parse_mode=ParseMode.MARKDOWN)
-
-
-@FileStream.on_message(
-    filters.channel
-    & ~filters.forwarded
-    & ~filters.media_group
-    & (
-            filters.document
-            | filters.video
-            | filters.video_note
-            | filters.audio
-            | filters.voice
-            | filters.photo
-    )
-)
-async def channel_receive_handler(bot: Client, message: Message):
-    if await is_channel_banned(bot, message):
+@FileStream.on_message(filters.command('files') & filters.private)
+async def my_files(bot: Client, message: Message):
+    if not await verify_user(bot, message):
         return
-    await is_channel_exist(bot, message)
+    user_files, total_files = await db.find_files(message.from_user.id, [1, 10])
 
-    try:
-        inserted_id = await db.add_file(get_file_info(message))
-        await get_file_ids(False, inserted_id, multi_clients, message)
-        reply_markup, stream_link = await gen_link(_id=inserted_id)
-        await bot.edit_message_reply_markup(
-            chat_id=message.chat.id,
-            message_id=message.id,
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("📥 دانلود",
-                                       url=f"https://t.me/{FileStream.username}?start=stream_{str(inserted_id)}")]])
+    file_list = []
+    async for x in user_files:
+        file_list.append([InlineKeyboardButton(x["file_name"], callback_data=f"myfile_{x['_id']}_{1}")])
+    if total_files > 10:
+        file_list.append(
+            [
+                InlineKeyboardButton("◄", callback_data="N/A"),
+                InlineKeyboardButton(f"1/{math.ceil(total_files / 10)}", callback_data="N/A"),
+                InlineKeyboardButton("►", callback_data="userfiles_2")
+            ],
         )
+    if not file_list:
+        file_list.append(
+            [InlineKeyboardButton("📭 خالی", callback_data="N/A")],
+        )
+    file_list.append([InlineKeyboardButton("✖️ بستن", callback_data="close")])
+    await message.reply_photo(photo=Telegram.FILE_PIC,
+                              caption="🗂 تعداد کل فایل ها: {}".format(total_files),
+                              reply_markup=InlineKeyboardMarkup(file_list))
 
-    except FloodWait as w:
-        print(f"Sleeping for {str(w.x)}s")
-        await asyncio.sleep(w.x)
-        await bot.send_message(chat_id=Telegram.ULOG_CHANNEL,
-                               text=f"ɢᴏᴛ ғʟᴏᴏᴅᴡᴀɪᴛ ᴏғ {str(w.x)}s ғʀᴏᴍ {message.chat.title}\n\n**ᴄʜᴀɴɴᴇʟ ɪᴅ :** `{str(message.chat.id)}`",
-                               disable_web_page_preview=True)
-    except Exception as e:
-        await bot.send_message(chat_id=Telegram.ULOG_CHANNEL, text=f"**#EʀʀᴏʀTʀᴀᴄᴋᴇʙᴀᴄᴋ:** `{e}`",
-                               disable_web_page_preview=True)
-        print(f"Cᴀɴ'ᴛ Eᴅɪᴛ Bʀᴏᴀᴅᴄᴀsᴛ Mᴇssᴀɢᴇ!\nEʀʀᴏʀ:  **Gɪᴠᴇ ᴍᴇ ᴇᴅɪᴛ ᴘᴇʀᴍɪssɪᴏɴ ɪɴ ᴜᴘᴅᴀᴛᴇs ᴀɴᴅ ʙɪɴ Cʜᴀɴɴᴇʟ!{e}**")
