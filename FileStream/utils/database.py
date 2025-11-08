@@ -3,9 +3,7 @@ import time
 import motor.motor_asyncio
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
-from FileStream.server.exceptions import FIleNotFound  # درست شد! (F بزرگ)
-from FileStream.config import Telegram
-import jdatetime
+from FileStream.server.exceptions import FIleNotFound
 
 class Database:
     def __init__(self, uri, database_name):
@@ -15,136 +13,122 @@ class Database:
         self.black = self.db.blacklist
         self.file = self.db.file
 
-    # --------------------- [ NEW USER ] --------------------- #
+#---------------------[ NEW USER ]---------------------#
     def new_user(self, id):
         return dict(
             id=id,
             join_date=time.time(),
-            Links=0,
-            Plan="Free"
+            Links=0
         )
 
-    # --------------------- [ ADD USER ] --------------------- #
+# ---------------------[ ADD USER ]---------------------#
     async def add_user(self, id):
         user = self.new_user(id)
         await self.col.insert_one(user)
 
-    # --------------------- [ GET USER ] --------------------- #
+# ---------------------[ GET USER ]---------------------#
     async def get_user(self, id):
-        return await self.col.find_one({'id': int(id)})
+        user = await self.col.find_one({'id': int(id)})
+        return user
 
-    # --------------------- [ COUNTS ] --------------------- #
+# ---------------------[ CHECK USER ]---------------------#
     async def total_users_count(self):
-        return await self.col.count_documents({})
+        count = await self.col.count_documents({})
+        return count
 
     async def get_all_users(self):
-        return self.col.find({})
+        all_users = self.col.find({})
+        return all_users
 
-    # --------------------- [ DELETE USER ] --------------------- #
+# ---------------------[ REMOVE USER ]---------------------#
     async def delete_user(self, user_id):
         await self.col.delete_many({'id': int(user_id)})
 
-    # --------------------- [ BAN SYSTEM ] --------------------- #
+# ---------------------[ BAN, UNBAN USER ]---------------------#
     def black_user(self, id):
-        return dict(id=id, ban_date=time.time())
+        return dict(
+            id=id,
+            ban_date=time.time()
+        )
 
     async def ban_user(self, id):
-        await self.black.insert_one(self.black_user(id))
+        user = self.black_user(id)
+        await self.black.insert_one(user)
 
     async def unban_user(self, id):
         await self.black.delete_one({'id': int(id)})
 
     async def is_user_banned(self, id):
-        return bool(await self.black.find_one({'id': int(id)}))
+        user = await self.black.find_one({'id': int(id)})
+        return True if user else False
 
     async def total_banned_users_count(self):
-        return await self.black.count_documents({})
-
-    # --------------------- [ ADD FILE ] --------------------- #
-    async def add_file(self, file_info, expire_seconds=None):
+        count = await self.black.count_documents({})
+        return count
+        
+# ---------------------[ ADD FILE TO DB ]---------------------#
+    async def add_file(self, file_info):
         file_info["time"] = time.time()
-        file_info["expire_at"] = time.time() + (expire_seconds or Telegram.LINK_EXPIRE_SECONDS)  # همیشه ست می‌شه
-        file_info["expires_in"] = expire_seconds or Telegram.LINK_EXPIRE_SECONDS
-
-        old = await self.get_file_by_fileuniqueid(file_info["user_id"], file_info["file_unique_id"])
-        if old:
-            return old["_id"]
-
+        fetch_old = await self.get_file_by_fileuniqueid(file_info["user_id"], file_info["file_unique_id"])
+        if fetch_old:
+            return fetch_old["_id"]
         await self.count_links(file_info["user_id"], "+")
         return (await self.file.insert_one(file_info)).inserted_id
 
-    # --------------------- [ FIND FILES ] --------------------- #
+# ---------------------[ FIND FILE IN DB ]---------------------#
     async def find_files(self, user_id, range):
-        query = {"user_id": user_id}
-        cursor = self.file.find(query)
-        cursor.skip(range[0] - 1).limit(range[1] - range[0] + 1).sort('_id', pymongo.DESCENDING)
-        total = await self.file.count_documents(query)
-        return cursor, total
+        user_files=self.file.find({"user_id": user_id})
+        user_files.skip(range[0] - 1)
+        user_files.limit(range[1] - range[0] + 1)
+        user_files.sort('_id', pymongo.DESCENDING)
+        total_files = await self.file.count_documents({"user_id": user_id})
+        return user_files, total_files
 
     async def get_file(self, _id):
         try:
-            file_info = await self.file.find_one({"_id": ObjectId(_id)})
+            file_info=await self.file.find_one({"_id": ObjectId(_id)})
             if not file_info:
-                raise FileNotFound
+                raise FIleNotFound
             return file_info
         except InvalidId:
-            raise FileNotFound
-
-    async def get_file_by_fileuniqueid(self, user_id, file_unique_id, many=False):
+            raise FIleNotFound
+    
+    async def get_file_by_fileuniqueid(self, id, file_unique_id, many=False):
         if many:
             return self.file.find({"file_unique_id": file_unique_id})
-        return await self.file.find_one({"user_id": user_id, "file_unique_id": file_unique_id})
+        else:
+            file_info=await self.file.find_one({"user_id": id, "file_unique_id": file_unique_id})
+        if file_info:
+            return file_info
+        return False
 
-    # --------------------- [ TOTAL FILES ] --------------------- #
+# ---------------------[ TOTAL FILES ]---------------------#
     async def total_files(self, id=None):
         if id:
             return await self.file.count_documents({"user_id": id})
         return await self.file.count_documents({})
 
-    # --------------------- [ DELETE ] --------------------- #
+# ---------------------[ DELETE FILES ]---------------------#
     async def delete_one_file(self, _id):
         await self.file.delete_one({'_id': ObjectId(_id)})
 
-    async def delete_expired_file(self, _id):
-        await self.file.delete_one({"_id": ObjectId(_id)})
-
-    # --------------------- [ UPDATE ] --------------------- #
+# ---------------------[ UPDATE FILES ]---------------------#
     async def update_file_ids(self, _id, file_ids: dict):
         await self.file.update_one({"_id": ObjectId(_id)}, {"$set": {"file_ids": file_ids}})
 
-    # --------------------- [ EXPIRED FILES — بدون async ] --------------------- #
-    def get_expired_files(self):  # بدون async → cursor برمی‌گردونه
-        return self.file.find({
-            "expire_at": {"$lt": time.time(), "$ne": None}
-        })
-
-    # --------------------- [ COOLDOWN — درست شده ] --------------------- #
-    async def get_user_last_link_time(self, user_id):
-        # آخرین فایل کاربر — همه فایل‌ها (حتی بدون انقضا)
-        last = await self.file.find_one(
-            {"user_id": user_id},
-            sort=[("time", pymongo.DESCENDING)]
-        )
-        return last["time"] if last else 0
-
-    async def is_user_on_cooldown(self, user_id):
-        if not Telegram.SPAM_PROTECTION:
-            return False
-        last_time = await self.get_user_last_link_time(user_id)
-        return (time.time() - last_time) < Telegram.USER_COOLDOWN_SECONDS
-
-    # --------------------- [ PAID SYSTEM ] --------------------- #
-    async def link_available(self, user_id):
-        user = await self.get_user(user_id)
-        if not user:
-            return False
-        if user.get("Plan") == "Plus":
-            return "Plus"
-        files = await self.total_files(user_id)
-        return files < 11
-
-    async def count_links(self, user_id, operation: str):
+# ---------------------[ PAID SYS ]---------------------#
+#     async def link_available(self, id):
+#         user = await self.col.find_one({"id": id})
+#         if user.get("Plan") == "Plus":
+#             return "Plus"
+#         elif user.get("Plan") == "Free":
+#             files = await self.file.count_documents({"user_id": id})
+#             if files < 11:
+#                 return True
+#             return False
+        
+    async def count_links(self, id, operation: str):
         if operation == "-":
-            await self.col.update_one({"id": user_id}, {"$inc": {"Links": -1}})
+            await self.col.update_one({"id": id}, {"$inc": {"Links": -1}})
         elif operation == "+":
-            await self.col.update_one({"id": user_id}, {"$inc": {"Links": 1}})
+            await self.col.update_one({"id": id}, {"$inc": {"Links": 1}})
