@@ -10,6 +10,7 @@ from pyrogram import idle
 from FileStream.bot import FileStream
 from FileStream.server import web_server
 from FileStream.bot.clients import initialize_clients
+from FileStream.utils.database import Database  # اضافه کردن
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,7 +25,19 @@ logging.getLogger("aiohttp.web").setLevel(logging.ERROR)
 
 server = web.AppRunner(web_server())
 
+db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)  # اضافه کردن db
+
 loop = asyncio.get_event_loop()
+
+async def cleanup_expired_files():
+    while True:
+        async for file in db.get_expired_files():
+            try:
+                await db.delete_expired_file(file["_id"])
+                await db.count_links(file["user_id"], "-")
+            except:
+                pass
+        await asyncio.sleep(30)
 
 async def start_services():
     print()
@@ -58,6 +71,10 @@ async def start_services():
         print("                        DC ID =>> {}".format(str(bot_info.dc_id)))
     print(" URL =>> {}".format(Server.URL))
     print("------------------------------------------------------------------")
+    
+    # اضافه کردن تسک پاک‌سازی
+    loop.create_task(cleanup_expired_files())
+    
     await idle()
 
 async def cleanup():
