@@ -1,4 +1,3 @@
-
 import asyncio
 from FileStream.bot import FileStream, multi_clients
 from FileStream.utils.bot_utils import is_user_banned, is_user_exist, is_user_joined, gen_link, is_channel_banned, is_channel_exist, is_user_authorized
@@ -34,17 +33,52 @@ async def private_receive_handler(bot: Client, message: Message):
     if Telegram.FORCE_SUB:
         if not await is_user_joined(bot, message):
             return
+
+    # آنتی اسپم هوشمند
+    if Telegram.SPAM_PROTECTION and await db.is_user_on_cooldown(message.from_user.id):
+        last_time = await db.get_user_last_link_time(message.from_user.id)
+        remaining = int(Telegram.USER_COOLDOWN_SECONDS - (time.time() - last_time))
+        hours = remaining // 3600
+        mins = (remaining % 3600) // 60
+        secs = remaining % 60
+
+        time_text = ""
+        if hours: time_text += f"{hours} ساعت "
+        if mins: time_text += f"{mins} دقیقه "
+        if secs: time_text += f"{secs} ثانیه"
+
+        await message.reply_text(
+            f"<b>آنتی اسپم فعال است!</b>\n\n"
+            f"هر <b>{Telegram.USER_COOLDOWN_SECONDS // 3600} ساعت</b> فقط یک لینک\n\n"
+            f"<b>زمان باقی‌مانده:</b>\n"
+            f"<code>{time_text.strip()}</code>",
+            parse_mode=ParseMode.HTML,
+            quote=True
+        )
+        return
+
     try:
-        inserted_id = await db.add_file(get_file_info(message))
+        # لینک با انقضای زمانی
+        inserted_id = await db.add_file(get_file_info(message), expire_seconds=Telegram.LINK_EXPIRE_SECONDS)
         await get_file_ids(False, inserted_id, multi_clients, message)
         reply_markup, stream_text = await gen_link(_id=inserted_id)
-        await message.reply_text(
+        reply_msg = await message.reply_text(
             text=stream_text,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
             reply_markup=reply_markup,
             quote=True
         )
+
+        # حذف خودکار بعد از انقضا
+        await asyncio.sleep(Telegram.LINK_EXPIRE_SECONDS)
+        try:
+            await reply_msg.delete()
+            await db.delete_one_file(inserted_id)
+            await db.count_links(message.from_user.id, "-")
+        except:
+            pass
+
     except FloodWait as e:
         print(f"Sleeping for {str(e.value)}s")
         await asyncio.sleep(e.value)
@@ -93,4 +127,3 @@ async def channel_receive_handler(bot: Client, message: Message):
         await bot.send_message(chat_id=Telegram.ULOG_CHANNEL, text=f"**#EʀʀᴏʀTʀᴀᴄᴋᴇʙᴀᴄᴋ:** `{e}`",
                                disable_web_page_preview=True)
         print(f"Cᴀɴ'ᴛ Eᴅɪᴛ Bʀᴏᴀᴅᴄᴀsᴛ Mᴇssᴀɢᴇ!\nEʀʀᴏʀ:  **Gɪᴠᴇ ᴍᴇ ᴇᴅɪᴛ ᴘᴇʀᴍɪssɪᴏɴ ɪɴ ᴜᴘᴅᴀᴛᴇs ᴀɴᴅ ʙɪɴ Cʜᴀɴɴᴇʟ!{e}**")
-
