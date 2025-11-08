@@ -1,6 +1,4 @@
-# FileStream/server/stream_routes.py
-
-import time  # برای چک کردن انقضا
+import time
 import math
 import logging
 import mimetypes
@@ -12,10 +10,6 @@ from FileStream.config import Telegram, Server
 from FileStream.server.exceptions import FIleNotFound, InvalidHash
 from FileStream import utils, StartTime, __version__
 from FileStream.utils.render_template import render_page
-from FileStream.utils.database import Database  # اضافه شد برای چک انقضا
-
-# دیتابیس برای چک کردن expire_at
-db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 
 routes = web.RouteTableDef()
 
@@ -41,12 +35,6 @@ async def root_route_handler(_):
 async def stream_handler(request: web.Request):
     try:
         path = request.match_info["path"]
-        
-        # چک انقضا قبل از رندر صفحه
-        file_info = await db.get_file(path)
-        if file_info and file_info.get('expire_at') and file_info['expire_at'] < time.time():
-            raise FIleNotFound("لینک منقضی شده است!")
-
         return web.Response(text=await render_page(path), content_type='text/html')
     except InvalidHash as e:
         raise web.HTTPForbidden(text=e.message)
@@ -55,8 +43,9 @@ async def stream_handler(request: web.Request):
     except (AttributeError, BadStatusLine, ConnectionResetError):
         pass
 
+
 @routes.get("/dl/{path}", allow_head=True)
-async def download_handler(request: web.Request):
+async def stream_handler(request: web.Request):
     try:
         path = request.match_info["path"]
         return await media_streamer(request, path)
@@ -76,17 +65,12 @@ class_cache = {}
 
 async def media_streamer(request: web.Request, db_id: str):
     range_header = request.headers.get("Range", 0)
-
-    # چک انقضا قبل از استریم
-    file_info = await db.get_file(db_id)
-    if file_info and file_info.get('expire_at') and file_info['expire_at'] < time.time():
-        raise FIleNotFound("لینک منقضی شده است!")
-
+    
     index = min(work_loads, key=work_loads.get)
     faster_client = multi_clients[index]
-
+    
     if Telegram.MULTI_CLIENT:
-        logging.info(f"Client {index} is now serving {request.headers.get('X-FORWARDED-FOR', request.remote)}")
+        logging.info(f"Client {index} is now serving {request.headers.get('X-FORWARDED-FOR',request.remote)}")
 
     if faster_client in class_cache:
         tg_connect = class_cache[faster_client]
@@ -95,11 +79,10 @@ async def media_streamer(request: web.Request, db_id: str):
         logging.debug(f"Creating new ByteStreamer object for client {index}")
         tg_connect = utils.ByteStreamer(faster_client)
         class_cache[faster_client] = tg_connect
-
     logging.debug("before calling get_file_properties")
     file_id = await tg_connect.get_file_properties(db_id, multi_clients)
     logging.debug("after calling get_file_properties")
-
+    
     file_size = file_id.file_size
 
     if range_header:
@@ -136,6 +119,9 @@ async def media_streamer(request: web.Request, db_id: str):
 
     if not mime_type:
         mime_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+
+    # if "video/" in mime_type or "audio/" in mime_type:
+    #     disposition = "inline"
 
     return web.Response(
         status=206 if range_header else 200,
