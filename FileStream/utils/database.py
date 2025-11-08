@@ -4,9 +4,6 @@ import motor.motor_asyncio
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
 from FileStream.server.exceptions import FIleNotFound
-from FileStream.config import Telegram  # اضافه کردن import
-
-import jdatetime  # اضافه کردن برای شمسی
 
 class Database:
     def __init__(self, uri, database_name):
@@ -70,19 +67,11 @@ class Database:
         return count
 
 # ---------------------[ ADD FILE TO DB ]---------------------#
-    async def add_file(self, file_info, expire_seconds=None):
+    async def add_file(self, file_info):
         file_info["time"] = time.time()
-        file_info["expire_at"] = None
-        file_info["expires_in"] = 0
-
-        if expire_seconds:
-            file_info["expire_at"] = time.time() + expire_seconds
-            file_info["expires_in"] = expire_seconds
-
         fetch_old = await self.get_file_by_fileuniqueid(file_info["user_id"], file_info["file_unique_id"])
         if fetch_old:
             return fetch_old["_id"]
-
         await self.count_links(file_info["user_id"], "+")
         return (await self.file.insert_one(file_info)).inserted_id
 
@@ -127,36 +116,16 @@ class Database:
     async def update_file_ids(self, _id, file_ids: dict):
         await self.file.update_one({"_id": ObjectId(_id)}, {"$set": {"file_ids": file_ids}})
 
-# ---------------------[ New Methods for Expiration and Cooldown ]---------------------#
-    def get_expired_files(self):  # تغییر به def (اصلاح ارور)
-        return self.file.find({"expire_at": {"$lt": time.time(), "$ne": None}})
-
-    async def delete_expired_file(self, _id):
-        await self.file.delete_one({"_id": ObjectId(_id)})
-
-    async def get_user_last_link_time(self, user_id):
-        last_file = await self.file.find_one(
-            {"user_id": user_id, "expire_at": {"$ne": None}},
-            sort=[("time", pymongo.DESCENDING)]
-        )
-        return last_file["time"] if last_file else 0
-
-    async def is_user_on_cooldown(self, user_id):
-        if not Telegram.SPAM_PROTECTION:
-            return False
-        last_time = await self.get_user_last_link_time(user_id)
-        return (time.time() - last_time) < Telegram.USER_COOLDOWN_SECONDS
-
 # ---------------------[ PAID SYS ]---------------------#
-    async def link_available(self, id):
-        user = await self.col.find_one({"id": id})
-        if user.get("Plan") == "Plus":
-            return "Plus"
-        elif user.get("Plan") == "Free":
-            files = await self.file.count_documents({"user_id": id})
-            if files < 11:
-                return True
-            return False
+#     async def link_available(self, id):
+#         user = await self.col.find_one({"id": id})
+#         if user.get("Plan") == "Plus":
+#             return "Plus"
+#         elif user.get("Plan") == "Free":
+#             files = await self.file.count_documents({"user_id": id})
+#             if files < 11:
+#                 return True
+#             return False
 
     async def count_links(self, id, operation: str):
         if operation == "-":
