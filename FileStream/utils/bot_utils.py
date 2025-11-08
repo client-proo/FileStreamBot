@@ -97,7 +97,7 @@ async def gen_link(_id):
     expire_time = file_info.get('expire_at')
 
     if expires_in:
-        # تهران = UTC + 3:30
+        
 tehran_time = expire_time + 12600
 jalali_date = jdatetime.datetime.fromtimestamp(tehran_time).strftime('%Y/%m/%d - %H:%M:%S')
         remaining = int(expire_time - time.time())
