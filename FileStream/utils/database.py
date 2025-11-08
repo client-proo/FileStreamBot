@@ -3,7 +3,7 @@ import time
 import motor.motor_asyncio
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
-from FileStream.server.exceptions import FIleNotFound  # درست شد!
+from FileStream.server.exceptions import FileNotFound  # درست شد! (F بزرگ)
 from FileStream.config import Telegram
 import jdatetime
 
@@ -63,12 +63,8 @@ class Database:
     # --------------------- [ ADD FILE ] --------------------- #
     async def add_file(self, file_info, expire_seconds=None):
         file_info["time"] = time.time()
-        file_info["expire_at"] = None
-        file_info["expires_in"] = 0
-
-        if expire_seconds:
-            file_info["expire_at"] = time.time() + expire_seconds
-            file_info["expires_in"] = expire_seconds
+        file_info["expire_at"] = time.time() + (expire_seconds or Telegram.LINK_EXPIRE_SECONDS)  # همیشه ست می‌شه
+        file_info["expires_in"] = expire_seconds or Telegram.LINK_EXPIRE_SECONDS
 
         old = await self.get_file_by_fileuniqueid(file_info["user_id"], file_info["file_unique_id"])
         if old:
@@ -89,10 +85,10 @@ class Database:
         try:
             file_info = await self.file.find_one({"_id": ObjectId(_id)})
             if not file_info:
-                raise FIleNotFound
+                raise FileNotFound
             return file_info
         except InvalidId:
-            raise FIleNotFound
+            raise FileNotFound
 
     async def get_file_by_fileuniqueid(self, user_id, file_unique_id, many=False):
         if many:
