@@ -104,7 +104,7 @@ async def gen_link(_id):
         expire_text = ""
 
     if "video" in mime_type:
-        stream_text = LANG.STREAM_TEXT.format(file_name, file_size, stream_link, page_link, file_link) + expire_text
+        stream_text = LANG.STREAM_TEXT.format(file_name, file_size, stream_link, page_link, file_link, expire_text)
         reply_markup = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton("🖥️ پخش آنلاین", url=page_link), InlineKeyboardButton("📥 دانلود", url=stream_link)],
@@ -113,7 +113,7 @@ async def gen_link(_id):
             ]
         )
     else:
-        stream_text = LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link) + expire_text
+        stream_text = LANG.STREAM_TEXT.format(file_name, file_size, stream_link, page_link, file_link, expire_text)
         reply_markup = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton("📥 دانلود", url=stream_link)],
