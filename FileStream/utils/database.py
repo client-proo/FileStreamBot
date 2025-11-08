@@ -127,7 +127,7 @@ class Database:
     async def update_file_ids(self, _id, file_ids: dict):
         await self.file.update_one({"_id": ObjectId(_id)}, {"$set": {"file_ids": file_ids}})
 
-# ---------------------[ متدهای جدید برای انقضا و کولداون ]---------------------#
+# ---------------------[ New Methods for Expiration and Cooldown ]---------------------#
     async def get_expired_files(self):
         return self.file.find({"expire_at": {"$lt": time.time(), "$ne": None}})
 
