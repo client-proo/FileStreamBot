@@ -89,10 +89,10 @@ class Database:
         try:
             file_info = await self.file.find_one({"_id": ObjectId(_id)})
             if not file_info:
-                raise FileNotFound
+                raise FIleNotFound
             return file_info
         except InvalidId:
-            raise FileNotFound
+            raise FIleNotFound
 
     async def get_file_by_fileuniqueid(self, user_id, file_unique_id, many=False):
         if many:
