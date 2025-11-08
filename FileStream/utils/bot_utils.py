@@ -79,6 +79,8 @@ async def is_user_joined(bot, message: Message):
 
 #---------------------[ PRIVATE GEN LINK + CALLBACK ]---------------------#
 
+import jdatetime  # اضافه کردن
+
 async def gen_link(_id):
     file_info = await db.get_file(_id)
     file_name = file_info['file_name']
@@ -89,8 +91,20 @@ async def gen_link(_id):
     stream_link = f"{Server.URL}dl/{_id}"
     file_link = f"https://t.me/{FileStream.username}?start=file_{_id}"
 
+    expires_in = file_info.get('expires_in', 0)
+    expire_time = file_info.get('expire_at')
+
+    if expires_in:
+        jalali_date = jdatetime.datetime.fromtimestamp(expire_time).strftime('%Y/%m/%d - %H:%M:%S')
+        remaining = int(expire_time - time.time())
+        mins, secs = divmod(remaining, 60)
+        countdown = f"{mins} دقیقه و {secs} ثانیه" if remaining > 0 else "منقضی شده!"
+        expire_text = f"\n\n<b>انقضا:</b> <code>{jalali_date}</code>\n<b>زمان باقی‌مانده:</b> <code>{countdown}</code>"
+    else:
+        expire_text = ""
+
     if "video" in mime_type:
-        stream_text = LANG.STREAM_TEXT.format(file_name, file_size, stream_link, page_link, file_link)
+        stream_text = LANG.STREAM_TEXT.format(file_name, file_size, stream_link, page_link, file_link) + expire_text
         reply_markup = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton("🖥️ پخش آنلاین", url=page_link), InlineKeyboardButton("📥 دانلود", url=stream_link)],
@@ -99,7 +113,7 @@ async def gen_link(_id):
             ]
         )
     else:
-        stream_text = LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link)
+        stream_text = LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link) + expire_text
         reply_markup = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton("📥 دانلود", url=stream_link)],
