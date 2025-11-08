@@ -122,10 +122,11 @@ class Database:
             "expire_at": {"$lt": time.time(), "$ne": None}
         })
 
-    # --------------------- [ COOLDOWN ] --------------------- #
+    # --------------------- [ COOLDOWN — درست شده ] --------------------- #
     async def get_user_last_link_time(self, user_id):
+        # آخرین فایل کاربر — همه فایل‌ها (حتی بدون انقضا)
         last = await self.file.find_one(
-            {"user_id": user_id, "expire_at": {"$ne": None}},
+            {"user_id": user_id},
             sort=[("time", pymongo.DESCENDING)]
         )
         return last["time"] if last else 0
