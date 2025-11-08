@@ -3,3 +3,6 @@ class InvalidHash(Exception):
 
 class FIleNotFound(Exception):
     message = "فایل پیدا نشد"
+
+class NoLogChannel(Exception):
+    message = "کانال لاگ تنظیم نشده"
