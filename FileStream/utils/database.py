@@ -3,7 +3,7 @@ import time
 import motor.motor_asyncio
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
-from FileStream.server.exceptions import FileNotFound  # درست شد! (F بزرگ)
+from FileStream.server.exceptions import FIleNotFound  # درست شد! (F بزرگ)
 from FileStream.config import Telegram
 import jdatetime
 
