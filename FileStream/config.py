@@ -26,6 +26,11 @@ class Telegram:
     SECONDARY = True if MODE.lower() == "secondary" else False
     AUTH_USERS = list(set(int(x) for x in str(env.get("AUTH_USERS", "")).split()))
 
+    # تنظیمات انقضا و آنتی اسپم
+    LINK_EXPIRE_SECONDS = int(env.get("LINK_EXPIRE_SECONDS", "60"))      # 60 ثانیه
+    USER_COOLDOWN_SECONDS = int(env.get("USER_COOLDOWN_SECONDS", "21600"))  # 6 ساعت = 21600 ثانیه
+    SPAM_PROTECTION = env.get("SPAM_PROTECTION", "true").lower() == "true"   # فعال/غیرفعال کردن آنتی اسپم
+
 class Server:
     PORT = int(env.get("PORT", 80))
     BIND_ADDRESS = str(env.get("BIND_ADDRESS", "0.0.0.0"))
