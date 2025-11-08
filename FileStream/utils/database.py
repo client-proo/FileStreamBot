@@ -3,7 +3,7 @@ import time
 import motor.motor_asyncio
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
-from FileStream.servergegevens import FIleNotFound
+from FileStream.server.exceptions import FileNotFound  # درست شد!
 from FileStream.config import Telegram
 import jdatetime
 
@@ -21,7 +21,7 @@ class Database:
             id=id,
             join_date=time.time(),
             Links=0,
-            Plan="Free"  # پیش‌فرض
+            Plan="Free"
         )
 
     # --------------------- [ ADD USER ] --------------------- #
@@ -33,7 +33,7 @@ class Database:
     async def get_user(self, id):
         return await self.col.find_one({'id': int(id)})
 
-    # --------------------- [ USER COUNT ] --------------------- #
+    # --------------------- [ COUNTS ] --------------------- #
     async def total_users_count(self):
         return await self.col.count_documents({})
 
@@ -70,7 +70,6 @@ class Database:
             file_info["expire_at"] = time.time() + expire_seconds
             file_info["expires_in"] = expire_seconds
 
-        # جلوگیری از تکرار
         old = await self.get_file_by_fileuniqueid(file_info["user_id"], file_info["file_unique_id"])
         if old:
             return old["_id"]
@@ -81,27 +80,26 @@ class Database:
     # --------------------- [ FIND FILES ] --------------------- #
     async def find_files(self, user_id, range):
         query = {"user_id": user_id}
-        user_files = self.file.find(query)
-        user_files.skip(range[0] - 1).limit(range[1] - range[0] + 1).sort('_id', pymongo.DESCENDING)
+        cursor = self.file.find(query)
+        cursor.skip(range[0] - 1).limit(range[1] - range[0] + 1).sort('_id', pymongo.DESCENDING)
         total = await self.file.count_documents(query)
-        return user_files, total
+        return cursor, total
 
     async def get_file(self, _id):
         try:
             file_info = await self.file.find_one({"_id": ObjectId(_id)})
             if not file_info:
-                raise FIleNotFound
+                raise FileNotFound
             return file_info
         except InvalidId:
-            raise FIleNotFound
+            raise FileNotFound
 
     async def get_file_by_fileuniqueid(self, user_id, file_unique_id, many=False):
         if many:
             return self.file.find({"file_unique_id": file_unique_id})
-        else:
-            return await self.file.find_one({"user_id": user_id, "file_unique_id": file_unique_id})
+        return await self.file.find_one({"user_id": user_id, "file_unique_id": file_unique_id})
 
-    # --------------------- [ COUNTS ] --------------------- #
+    # --------------------- [ TOTAL FILES ] --------------------- #
     async def total_files(self, id=None):
         if id:
             return await self.file.count_documents({"user_id": id})
@@ -138,7 +136,7 @@ class Database:
         last_time = await self.get_user_last_link_time(user_id)
         return (time.time() - last_time) < Telegram.USER_COOLDOWN_SECONDS
 
-    # --------------------- [ PAID SYSTEM — کامل ] --------------------- #
+    # --------------------- [ PAID SYSTEM ] --------------------- #
     async def link_available(self, user_id):
         user = await self.get_user(user_id)
         if not user:
@@ -146,7 +144,7 @@ class Database:
         if user.get("Plan") == "Plus":
             return "Plus"
         files = await self.total_files(user_id)
-        return files < 11  # فقط ۱۰ تا لینک برای فری
+        return files < 11
 
     async def count_links(self, user_id, operation: str):
         if operation == "-":
