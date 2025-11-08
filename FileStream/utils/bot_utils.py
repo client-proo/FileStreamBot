@@ -1,5 +1,6 @@
 import jdatetime
 import time
+from datetime import datetime, timezone, timedelta
 from pyrogram.errors import UserNotParticipant, FloodWait
 from pyrogram.enums.parse_mode import ParseMode
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
@@ -97,8 +98,8 @@ async def gen_link(_id):
     expire_time = file_info.get('expire_at')
 
     if expires_in:
-        tehran_time = expire_time + 12600
-        jalali_date = jdatetime.datetime.fromtimestamp(tehran_time).strftime('%Y/%m/%d - %H:%M:%S')
+        tehran_tz = timezone(timedelta(hours=3, minutes=30))
+        jalali_date = jdatetime.datetime.fromtimestamp(expire_time, tz=tehran_tz).strftime('%Y/%m/%d - %H:%M:%S')
         remaining = int(expire_time - time.time())
         mins, secs = divmod(remaining, 60)
         countdown = f"{mins} دقیقه و {secs} ثانیه" if remaining > 0 else "منقضی شده!"
