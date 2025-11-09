@@ -71,6 +71,7 @@ async def private_receive_handler(bot: Client, message: Message):
             await message.reply_text("لینک منقضی شده است!")
             return
 
+        # پیام لینک با quote=True → ریپلای به فایل کاربر
         reply_msg = await message.reply_text(
             text=stream_text,
             parse_mode=ParseMode.HTML,
@@ -79,7 +80,7 @@ async def private_receive_handler(bot: Client, message: Message):
             quote=True
         )
 
-        # حذف خودکار بعد از انقضا
+        # حذف خودکار + ارسال پیام منقضی (ریپلای به فایل کاربر)
         expire_delay = Telegram.EXPIRE_TIME
         if expire_delay > 0:
             asyncio.create_task(delete_after_expire(reply_msg, expire_delay))
@@ -98,14 +99,24 @@ async def private_receive_handler(bot: Client, message: Message):
         await message.reply_text("خطایی رخ داد! دوباره تلاش کنید.")
 
 
-# ====================== AUTO DELETE AFTER EXPIRE ======================
+# ====================== AUTO DELETE + REPLY EXPIRED ======================
 async def delete_after_expire(msg: Message, delay: float):
+    """
+    1. حذف پیام لینک
+    2. ارسال پیام منقضی شده — ریپلای به فایل کاربر
+    """
     await asyncio.sleep(delay)
     try:
+        # حذف پیام لینک
         await msg.delete()
-        await msg.reply_text("لینک شما منقضی شد!")
+
+        # ارسال پیام منقضی شده — ریپلای به فایل کاربر
+        await msg.reply_to_message.reply_text(
+            "لینک شما منقضی شد!",
+            quote=True
+        )
     except Exception as e:
-        print(f"Could not delete expired message: {e}")
+        print(f"Could not delete link or send expired message: {e}")
 
 
 # ====================== CHANNEL FILE HANDLER ======================
