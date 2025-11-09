@@ -10,8 +10,8 @@ from FileStream.utils.database import Database
 from FileStream.utils.file_properties import get_file_ids, get_file_info
 from FileStream.config import Telegram
 from pyrogram import filters, Client
-from pyrogram.errors import FloodWait, MessageNotModified
-from pyrogram.types import Message
+from pyrogram.errors import FloodWait, MessageDeleteForbidden
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.enums.parse_mode import ParseMode
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
@@ -48,7 +48,8 @@ async def private_receive_handler(bot: Client, message: Message):
     is_repeat, remaining_repeat = await db.check_repeat(message.from_user.id, file_unique_id)
     if is_repeat:
         await message.reply_text(
-            f"این فایل هنوز معتبر است! لینک قبلی تا {seconds_to_hms(remaining_repeat)} دیگر فعال است.",
+            f"این فایل هنوز معتبر است! لینک قبلی تا **{seconds_to_hms(remaining_repeat)}** دیگر فعال است.",
+            parse_mode=ParseMode.MARKDOWN,
             quote=True
         )
         return
@@ -57,7 +58,8 @@ async def private_receive_handler(bot: Client, message: Message):
     remaining_spam, is_spam = await db.check_spam(message.from_user.id)
     if is_spam:
         await message.reply_text(
-            f"اسپم نکنید! منتظر بمانید {seconds_to_hms(int(remaining_spam))}",
+            f"اسپم نکنید! منتظر بمانید **{seconds_to_hms(int(remaining_spam))}**",
+            parse_mode=ParseMode.MARKDOWN,
             quote=True
         )
         return
@@ -71,74 +73,80 @@ async def private_receive_handler(bot: Client, message: Message):
             await message.reply_text("لینک منقضی شده است!")
             return
 
-        # پیام لینک
+        # زمان باقی‌مانده
+        expire_time = seconds_to_hms(Telegram.EXPIRE_TIME)
+
+        final_text = (
+            f"{stream_text}\n\n"
+            f"<b>زمان باقی‌مانده:</b> <code>{expire_time}</code>"
+        )
+
         reply_msg = await message.reply_text(
-            text=stream_text,
+            text=final_text,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
             reply_markup=reply_markup,
             quote=True
         )
 
-        # زمان‌بندی پیام منقضی
+        # زمان‌بندی حذف + پاک کردن دیتابیس
         expire_delay = max(Telegram.EXPIRE_TIME, 1)
         asyncio.create_task(
             delete_after_expire(
                 reply_msg=reply_msg,
                 original_msg=message,
                 user_id=message.from_user.id,
+                file_id=inserted_id,  # برای حذف از دیتابیس
                 delay=expire_delay
             )
         )
 
     except FloodWait as e:
         await asyncio.sleep(e.value)
-        await bot.send_message(
-            chat_id=Telegram.ULOG_CHANNEL,
-            text=f"FloodWait {e.value}s از کاربر {message.from_user.id}"
-        )
+        await bot.send_message(chat_id=Telegram.ULOG_CHANNEL, text=f"FloodWait {e.value}s")
     except Exception as e:
         print(f"Error in private handler: {e}")
         await message.reply_text("خطایی رخ داد!")
 
 
-# ====================== AUTO DELETE + REPLY EXPIRED (ضدخطا) ======================
-async def delete_after_expire(reply_msg: Message, original_msg: Message, user_id: int, delay: float):
-    """
-    1. حذف پیام لینک
-    2. ارسال پیام منقضی — ریپلای به فایل کاربر (اگر وجود داشته باشه)
-    3. اگر فایل حذف شده بود → پیام عادی به کاربر
-    """
+# ====================== AUTO DELETE + REPLY + DB CLEANUP ======================
+async def delete_after_expire(reply_msg: Message, original_msg: Message, user_id: int, file_id: int, delay: float):
     await asyncio.sleep(delay)
-    try:
-        # حذف پیام لینک
-        await reply_msg.delete()
-    except Exception:
-        pass  # اگر پیام حذف شده بود، بی‌خیال
 
+    # --- 1. حذف پیام لینک ---
     try:
-        # اگر فایل کاربر هنوز وجود داره → ریپلای
-        if original_msg:
+        await reply_msg.delete()
+        print(f"Link message deleted: {reply_msg.id}")
+    except MessageDeleteForbidden:
+        print(f"Cannot delete link message (forbidden): {reply_msg.id}")
+    except Exception as e:
+        print(f"Error deleting link message: {e}")
+
+    # --- 2. پاک کردن فایل از دیتابیس ---
+    try:
+        await db.delete_file(file_id)
+        print(f"File {file_id} deleted from database")
+    except Exception as e:
+        print(f"Error deleting file from DB: {e}")
+
+    # --- 3. ارسال پیام منقضی شده ---
+    try:
+        if original_msg and original_msg.id:
             await original_msg.reply_text(
                 "لینک شما منقضی شد!",
                 quote=True
             )
         else:
-            # اگر فایل حذف شده بود → پیام عادی به کاربر
             await FileStream.send_message(
                 chat_id=user_id,
                 text="لینک شما منقضی شد!"
             )
     except Exception as e:
         print(f"Could not send expired message: {e}")
-        # آخرین تلاش: پیام عادی
         try:
-            await FileStream.send_message(
-                chat_id=user_id,
-                text="لینک شما منقضی شد!"
-            )
+            await FileStream.send_message(chat_id=user_id, text="لینک شما منقضی شد!")
         except Exception:
-            pass  # کاربر بلاک کرده یا آفلاین
+            pass
 
 
 # ====================== CHANNEL FILE HANDLER ======================
