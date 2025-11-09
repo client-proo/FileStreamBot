@@ -83,10 +83,23 @@ async def is_user_joined(bot, message: Message):
 #---------------------[ PRIVATE GEN LINK + CALLBACK ]---------------------#
 
 def seconds_to_hms(seconds: int) -> str:
+    """تبدیل ثانیه به فرمت خوانا: X ساعت Y دقیقه Z ثانیه"""
+    if seconds <= 0:
+        return "0 ثانیه"
+    
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     secs = seconds % 60
-    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    
+    parts = []
+    if hours > 0:
+        parts.append(f"{hours} ساعت")
+    if minutes > 0:
+        parts.append(f"{minutes} دقیقه")
+    if secs > 0:
+        parts.append(f"{secs} ثانیه")
+    
+    return " و ".join(parts)
 
 async def gen_link(_id):
     try:
@@ -101,10 +114,10 @@ async def gen_link(_id):
         # تاریخ شمسی انقضا (به وقت ایران)
         tz_iran = pytz.timezone('Asia/Tehran')
         expire_dt = datetime.fromtimestamp(expire_time, tz_iran)
-        expire_jalali = jdatetime.fromgregorian(datetime=expire_dt).strftime('%Y/%m/%d %H:%M:%S')
+        expire_jalali = jdatetime.fromgregorian(datetime=expire_dt).strftime('%Y/%m/%d - %H:%M:%S')
 
-        # شمارش معکوس
-        remaining_hms = seconds_to_hms(remaining_seconds)
+        # شمارش معکوس به صورت خوانا
+        remaining_readable = seconds_to_hms(remaining_seconds)
 
         file_name = file_info['file_name']
         file_size = humanbytes(file_info['file_size'])
@@ -116,7 +129,7 @@ async def gen_link(_id):
 
         if "video" in mime_type:
             stream_text = LANG.STREAM_TEXT.format(file_name, file_size, stream_link, page_link, file_link)
-            stream_text += f"\n\n📅 تاریخ انقضا (شمسی): {expire_jalali}\n⏳ زمان باقی‌مانده تا انقضا: {remaining_hms}"
+            stream_text += f"\n\n⏰ زمان باقی‌مانده: **{remaining_readable}**\n📅 انقضا: {expire_jalali}"
             reply_markup = InlineKeyboardMarkup(
                 [
                     [InlineKeyboardButton("🖥️ پخش آنلاین", url=page_link), InlineKeyboardButton("📥 دانلود", url=stream_link)],
@@ -126,7 +139,7 @@ async def gen_link(_id):
             )
         else:
             stream_text = LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link)
-            stream_text += f"\n\n📅 تاریخ انقضا (شمسی): {expire_jalali}\n⏳ زمان باقی‌مانده تا انقضا: {remaining_hms}"
+            stream_text += f"\n\n⏰ زمان باقی‌مانده: **{remaining_readable}**\n📅 انقضا: {expire_jalali}"
             reply_markup = InlineKeyboardMarkup(
                 [
                     [InlineKeyboardButton("📥 دانلود", url=stream_link)],
