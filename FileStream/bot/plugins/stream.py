@@ -44,16 +44,16 @@ async def private_receive_handler(bot: Client, message: Message):
 
     file_unique_id = get_file_info(message)['file_unique_id']
 
-    # 1. چک ضد تکرار (اول — مهم!)
+    # چک ضد تکرار (تا زمان انقضای لینک)
     is_repeat, remaining_repeat = await db.check_repeat(message.from_user.id, file_unique_id)
     if is_repeat:
         await message.reply_text(
-            f"فایل تکراری است! لطفاً {seconds_to_hms(remaining_repeat)} صبر کنید.",
+            f"این فایل هنوز معتبر است! لینک قبلی تا {seconds_to_hms(remaining_repeat)} دیگر فعال است.",
             quote=True
         )
-        return  # return کن تا check_spam اجرا نشه
+        return
 
-    # 2. چک ضد اسپم (فقط برای فایل جدید)
+    # چک ضد اسپم (30 ثانیه)
     remaining_spam, is_spam = await db.check_spam(message.from_user.id)
     if is_spam:
         await message.reply_text(
@@ -63,17 +63,14 @@ async def private_receive_handler(bot: Client, message: Message):
         return
 
     try:
-        # 3. اضافه کردن فایل
         inserted_id = await db.add_file(get_file_info(message))
         await get_file_ids(False, inserted_id, multi_clients, message)
 
-        # 4. ساخت لینک
         reply_markup, stream_text = await gen_link(_id=inserted_id)
         if reply_markup is None:
             await message.reply_text("لینک منقضی شده است!")
             return
 
-        # 5. ارسال پیام
         reply_msg = await message.reply_text(
             text=stream_text,
             parse_mode=ParseMode.HTML,
@@ -82,7 +79,7 @@ async def private_receive_handler(bot: Client, message: Message):
             quote=True
         )
 
-        # 6. حذف خودکار بعد از انقضا
+        # حذف خودکار بعد از انقضا
         expire_delay = Telegram.EXPIRE_TIME
         if expire_delay > 0:
             asyncio.create_task(delete_after_expire(reply_msg, expire_delay))
@@ -132,7 +129,7 @@ async def channel_receive_handler(bot: Client, message: Message):
 
     file_unique_id = get_file_info(message)['file_unique_id']
 
-    # چک ضد تکرار (در کانال — مهم!)
+    # چک ضد تکرار (در کانال)
     is_repeat, _ = await db.check_repeat(message.chat.id, file_unique_id)
     if is_repeat:
         return  # جلوگیری از آپلود تکراری
@@ -142,7 +139,7 @@ async def channel_receive_handler(bot: Client, message: Message):
         await get_file_ids(False, inserted_id, multi_clients, message)
         reply_markup, _ = await gen_link(_id=inserted_id)
 
-        # سعی برای ویرایش پیام اصلی
+        # ویرایش دکمه پیام اصلی
         try:
             await bot.edit_message_reply_markup(
                 chat_id=message.chat.id,
@@ -151,8 +148,8 @@ async def channel_receive_handler(bot: Client, message: Message):
                     [InlineKeyboardButton("دانلود", url=f"https://t.me/{FileStream.username}?start=stream_{inserted_id}")]
                 ])
             )
-        except Exception as e:
-            # fallback: پیام جدید زیر فایل
+        except Exception:
+            # fallback: پیام جدید
             await bot.send_message(
                 chat_id=message.chat.id,
                 text="لینک دانلود:",
