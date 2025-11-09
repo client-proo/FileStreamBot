@@ -20,8 +20,7 @@ class Database:
             id=id,
             join_date=time.time(),
             Links=0,
-            recent_files={},  # جدید
-            last_send_time=0  # جدید
+            last_send_time=0  # فقط برای ضد اسپم
         )
 
 # ---------------------[ ADD USER ]---------------------#
@@ -80,7 +79,7 @@ class Database:
 
 # ---------------------[ FIND FILE IN DB ]---------------------#
     async def find_files(self, user_id, range):
-        user_files=self.file.find({"user_id": user_id})
+        user_files = self.file.find({"user_id": user_id})
         user_files.skip(range[0] - 1)
         user_files.limit(range[1] - range[0] + 1)
         user_files.sort('_id', pymongo.DESCENDING)
@@ -89,7 +88,7 @@ class Database:
 
     async def get_file(self, _id):
         try:
-            file_info=await self.file.find_one({"_id": ObjectId(_id)})
+            file_info = await self.file.find_one({"_id": ObjectId(_id)})
             if not file_info:
                 raise FIleNotFound
             return file_info
@@ -100,7 +99,7 @@ class Database:
         if many:
             return self.file.find({"file_unique_id": file_unique_id})
         else:
-            file_info=await self.file.find_one({"user_id": id, "file_unique_id": file_unique_id})
+            file_info = await self.file.find_one({"user_id": id, "file_unique_id": file_unique_id})
         if file_info:
             return file_info
         return False
@@ -120,34 +119,34 @@ class Database:
         await self.file.update_one({"_id": ObjectId(_id)}, {"$set": {"file_ids": file_ids}})
 
 # ---------------------[ PAID SYS ]---------------------#
-#     async def link_available(self, id):
-#         user = await self.col.find_one({"id": id})
-#         if user.get("Plan") == "Plus":
-#             return "Plus"
-#         elif user.get("Plan") == "Free":
-#             files = await self.file.count_documents({"user_id": id})
-#             if files < 11:
-#                 return True
-#             return False
-
     async def count_links(self, id, operation: str):
         if operation == "-":
             await self.col.update_one({"id": id}, {"$inc": {"Links": -1}})
         elif operation == "+":
             await self.col.update_one({"id": id}, {"$inc": {"Links": 1}})
 
+# ---------------------[ ضد تکرار (فقط برای فایل‌های فعال) ]---------------------#
     async def check_repeat(self, user_id, file_unique_id):
-        user = await self.get_user(user_id)
-        if not user:
-            return False
-        recent = user.get('recent_files', {})
-        last_time = recent.get(file_unique_id, 0)
-        if time.time() - last_time < Telegram.ANTI_REPEAT_TIME:
-            return True  # تکراری است
-        recent[file_unique_id] = time.time()
-        await self.col.update_one({'id': user_id}, {'$set': {'recent_files': recent}})
-        return False
+        # فقط فایل‌هایی که هنوز منقضی نشده‌اند
+        expire_threshold = time.time() - Telegram.EXPIRE_TIME
+        
+        last_file = await self.file.find_one(
+            {
+                "user_id": user_id,
+                "file_unique_id": file_unique_id,
+                "time": {"$gt": expire_threshold}  # فقط فایل‌های فعال
+            },
+            sort=[("time", -1)]
+        )
+        
+        if last_file:
+            last_time = last_file['time']
+            if time.time() - last_time < Telegram.ANTI_REPEAT_TIME:
+                remaining = int(Telegram.ANTI_REPEAT_TIME - (time.time() - last_time))
+                return True, remaining  # تکراری است
+        return False, 0  # اجازه آپلود
 
+# ---------------------[ ضد اسپم (۳۰ ثانیه بین هر آپلود) ]---------------------#
     async def check_spam(self, user_id):
         user = await self.get_user(user_id)
         if not user:
@@ -157,4 +156,4 @@ class Database:
         if remaining > 0:
             return remaining, True  # اسپم است
         await self.col.update_one({'id': user_id}, {'$set': {'last_send_time': time.time()}})
-        return 0, False
+        return 0, False  # اجازه آپلود
