@@ -83,7 +83,6 @@ class Database:
         if fetch_old:
             return fetch_old["_id"]  # فایل فعال → برگردون همون
         else:
-            # فایل منقضی یا وجود نداره → جدید بساز
             await self.count_links(file_info["user_id"], "+")
             return (await self.file.insert_one(file_info)).inserted_id
 
@@ -138,7 +137,7 @@ class Database:
         elif operation == "+":
             await self.col.update_one({"id": id}, {"$inc": {"Links": 1}})
 
-# ---------------------[ CHECK REPEAT (فقط فایل‌های فعال) ]---------------------#
+# ---------------------[ CHECK REPEAT (تا انقضای لینک) ]---------------------#
     async def check_repeat(self, user_id, file_unique_id):
         expire_threshold = time.time() - Telegram.EXPIRE_TIME
         
@@ -153,10 +152,9 @@ class Database:
         
         if last_file:
             last_time = last_file['time']
-            if time.time() - last_time < Telegram.ANTI_REPEAT_TIME:
-                remaining = int(Telegram.ANTI_REPEAT_TIME - (time.time() - last_time))
-                return True, remaining
-        return False, 0
+            remaining = int(Telegram.EXPIRE_TIME - (time.time() - last_time))
+            return True, remaining  # فایل هنوز فعال است
+        return False, 0  # فایل منقضی شده → اجازه آپلود
 
 # ---------------------[ CHECK SPAM ]---------------------#
     async def check_spam(self, user_id):
