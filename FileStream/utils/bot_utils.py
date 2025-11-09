@@ -11,7 +11,6 @@ import asyncio
 from typing import (
     Union
 )
-from jdatetime import datetime as jdatetime
 import pytz
 from datetime import datetime
 
@@ -114,7 +113,12 @@ async def gen_link(_id):
         # تاریخ شمسی انقضا (به وقت ایران)
         tz_iran = pytz.timezone('Asia/Tehran')
         expire_dt = datetime.fromtimestamp(expire_time, tz_iran)
-        expire_jalali = jdatetime.fromgregorian(datetime=expire_dt).strftime('%Y/%m/%d - %H:%M:%S')
+        
+        try:
+            import jdatetime
+            expire_jalali = jdatetime.fromgregorian(datetime=expire_dt).strftime('%Y/%m/%d - %H:%M:%S')
+        except ImportError:
+            expire_jalali = expire_dt.strftime('%Y-%m-%d %H:%M:%S')
 
         # شمارش معکوس به صورت خوانا
         remaining_readable = seconds_to_hms(remaining_seconds)
@@ -230,12 +234,38 @@ async def is_user_authorized(message):
 #---------------------[ USER EXIST ]---------------------#
 
 async def is_user_exist(bot, message):
-    if not bool(await db.get_user(message.from_user.id)):
-        await db.add_user(message.from_user.id)
+    user_id = message.from_user.id
+    user = await db.get_user(user_id)
+    
+    if not user:
+        # ثبت کاربر جدید با اطلاعات کامل
+        username = message.from_user.username
+        first_name = message.from_user.first_name
+        last_name = message.from_user.last_name
+        
+        await db.add_user(user_id, username, first_name, last_name)
+        
+        # ارسال پیام به کانال لاگ
+        user_info = f"**👤 نام:** {first_name or ''} {last_name or ''}\n"
+        user_info += f"**📧 یوزرنیم:** @{username}\n" if username else "**📧 یوزرنیم:** ندارد\n"
+        user_info += f"**🆔 آیدی:** `{user_id}`"
+        
         await bot.send_message(
             Telegram.ULOG_CHANNEL,
-            f"**✨ کاربر جدید اضافه شد! ✨**\n**👤 نام کاربر :** [{message.from_user.first_name}](tg://user?id={message.from_user.id})\n**🆔 آیدی کاربر :** `{message.from_user.id}`"
+            f"**✨ کاربر جدید اضافه شد! ✨**\n\n{user_info}"
         )
+    else:
+        # بروزرسانی اطلاعات کاربر اگر تغییر کرده
+        username = message.from_user.username
+        first_name = message.from_user.first_name
+        last_name = message.from_user.last_name
+        
+        # چک کردن آیا اطلاعات تغییر کرده
+        if (user.get('username') != username or 
+            user.get('first_name') != first_name or 
+            user.get('last_name') != last_name):
+            
+            await db.update_user_info(user_id, username, first_name, last_name)
 
 async def is_channel_exist(bot, message):
     if not bool(await db.get_user(message.chat.id)):
