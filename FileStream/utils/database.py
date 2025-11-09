@@ -17,18 +17,38 @@ class Database:
         self.file = self.db.file
 
     # ---------------------[ NEW USER ]---------------------#
-    def new_user(self, id):
+    def new_user(self, id, username=None, first_name=None, last_name=None):
         return dict(
             id=id,
+            username=username,
+            first_name=first_name,
+            last_name=last_name,
             join_date=time.time(),
             Links=0,
             last_send_time=0
         )
 
     # ---------------------[ ADD USER ]---------------------#
-    async def add_user(self, id):
-        user = self.new_user(id)
+    async def add_user(self, id, username=None, first_name=None, last_name=None):
+        user = self.new_user(id, username, first_name, last_name)
         await self.col.insert_one(user)
+
+    # ---------------------[ UPDATE USER INFO ]---------------------#
+    async def update_user_info(self, user_id, username=None, first_name=None, last_name=None):
+        """بروزرسانی اطلاعات کاربر"""
+        update_data = {}
+        if username is not None:
+            update_data['username'] = username
+        if first_name is not None:
+            update_data['first_name'] = first_name
+        if last_name is not None:
+            update_data['last_name'] = last_name
+            
+        if update_data:
+            await self.col.update_one(
+                {'id': user_id},
+                {'$set': update_data}
+            )
 
     # ---------------------[ GET USER ]---------------------#
     async def get_user(self, id):
