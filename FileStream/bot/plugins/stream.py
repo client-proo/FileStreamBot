@@ -64,23 +64,25 @@ async def private_receive_handler(bot: Client, message: Message):
         )
         return
 
+    reply_msg = None
+    inserted_id = None
+
     try:
+        # --- 1. اضافه کردن فایل به دیتابیس ---
         inserted_id = await db.add_file(get_file_info(message))
         await get_file_ids(False, inserted_id, multi_clients, message)
 
+        # --- 2. ساخت لینک ---
         reply_markup, stream_text = await gen_link(_id=inserted_id)
         if reply_markup is None:
             await message.reply_text("لینک منقضی شده است!")
             return
 
-        # زمان باقی‌مانده
+        # --- 3. زمان باقی‌مانده ---
         expire_time = seconds_to_hms(Telegram.EXPIRE_TIME)
+        final_text = f"{stream_text}\n\n<b>زمان باقی‌مانده:</b> <code>{expire_time}</code>"
 
-        final_text = (
-            f"{stream_text}\n\n"
-            f"<b>زمان باقی‌مانده:</b> <code>{expire_time}</code>"
-        )
-
+        # --- 4. ارسال پیام لینک ---
         reply_msg = await message.reply_text(
             text=final_text,
             parse_mode=ParseMode.HTML,
@@ -89,14 +91,14 @@ async def private_receive_handler(bot: Client, message: Message):
             quote=True
         )
 
-        # زمان‌بندی حذف + پاک کردن دیتابیس
+        # --- 5. زمان‌بندی حذف + پاک کردن دیتابیس ---
         expire_delay = max(Telegram.EXPIRE_TIME, 1)
         asyncio.create_task(
             delete_after_expire(
                 reply_msg=reply_msg,
                 original_msg=message,
                 user_id=message.from_user.id,
-                file_id=inserted_id,  # برای حذف از دیتابیس
+                file_id=inserted_id,
                 delay=expire_delay
             )
         )
@@ -104,12 +106,21 @@ async def private_receive_handler(bot: Client, message: Message):
     except FloodWait as e:
         await asyncio.sleep(e.value)
         await bot.send_message(chat_id=Telegram.ULOG_CHANNEL, text=f"FloodWait {e.value}s")
+
     except Exception as e:
         print(f"Error in private handler: {e}")
-        await message.reply_text("خطایی رخ داد!")
+        await message.reply_text("خطایی رخ داد! دوباره تلاش کنید.")
+
+        # --- پاک کردن فایل ناقص از دیتابیس ---
+        if inserted_id:
+            try:
+                await db.delete_one_file(inserted_id)
+                print(f"Cleaned up incomplete file {inserted_id}")
+            except Exception as cleanup_error:
+                print(f"Cleanup failed: {cleanup_error}")
 
 
-# ====================== AUTO DELETE + REPLY + DB CLEANUP ======================
+# ====================== AUTO DELETE + DB CLEANUP + EXPIRED MESSAGE ======================
 async def delete_after_expire(reply_msg: Message, original_msg: Message, user_id: int, file_id: int, delay: float):
     await asyncio.sleep(delay)
 
@@ -124,10 +135,11 @@ async def delete_after_expire(reply_msg: Message, original_msg: Message, user_id
 
     # --- 2. پاک کردن فایل از دیتابیس ---
     try:
-        await db.delete_file(file_id)
-        print(f"File {file_id} deleted from database")
+        await db.delete_one_file(file_id)
+        await db.count_links(user_id, "-")
+        print(f"File {file_id} expired and deleted from DB")
     except Exception as e:
-        print(f"Error deleting file from DB: {e}")
+        print(f"Error deleting expired file from DB: {e}")
 
     # --- 3. ارسال پیام منقضی شده ---
     try:
