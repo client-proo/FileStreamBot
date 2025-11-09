@@ -20,7 +20,7 @@ class Database:
             id=id,
             join_date=time.time(),
             Links=0,
-            last_send_time=0  # فقط برای ضد اسپم
+            last_send_time=0
         )
 
 # ---------------------[ ADD USER ]---------------------#
@@ -71,11 +71,21 @@ class Database:
 # ---------------------[ ADD FILE TO DB ]---------------------#
     async def add_file(self, file_info):
         file_info["time"] = time.time()
-        fetch_old = await self.get_file_by_fileuniqueid(file_info["user_id"], file_info["file_unique_id"])
+        
+        # فقط فایل‌های فعال (غیر منقضی) رو چک کن
+        expire_threshold = time.time() - Telegram.EXPIRE_TIME
+        fetch_old = await self.file.find_one({
+            "user_id": file_info["user_id"],
+            "file_unique_id": file_info["file_unique_id"],
+            "time": {"$gt": expire_threshold}
+        })
+        
         if fetch_old:
-            return fetch_old["_id"]
-        await self.count_links(file_info["user_id"], "+")
-        return (await self.file.insert_one(file_info)).inserted_id
+            return fetch_old["_id"]  # فایل فعال → برگردون همون
+        else:
+            # فایل منقضی یا وجود نداره → جدید بساز
+            await self.count_links(file_info["user_id"], "+")
+            return (await self.file.insert_one(file_info)).inserted_id
 
 # ---------------------[ FIND FILE IN DB ]---------------------#
     async def find_files(self, user_id, range):
@@ -96,13 +106,16 @@ class Database:
             raise FIleNotFound
 
     async def get_file_by_fileuniqueid(self, id, file_unique_id, many=False):
+        expire_threshold = time.time() - Telegram.EXPIRE_TIME
+        query = {
+            "user_id": id,
+            "file_unique_id": file_unique_id,
+            "time": {"$gt": expire_threshold}
+        }
         if many:
-            return self.file.find({"file_unique_id": file_unique_id})
+            return self.file.find(query)
         else:
-            file_info = await self.file.find_one({"user_id": id, "file_unique_id": file_unique_id})
-        if file_info:
-            return file_info
-        return False
+            return await self.file.find_one(query)
 
 # ---------------------[ TOTAL FILES ]---------------------#
     async def total_files(self, id=None):
@@ -125,16 +138,15 @@ class Database:
         elif operation == "+":
             await self.col.update_one({"id": id}, {"$inc": {"Links": 1}})
 
-# ---------------------[ ضد تکرار (فقط برای فایل‌های فعال) ]---------------------#
+# ---------------------[ CHECK REPEAT (فقط فایل‌های فعال) ]---------------------#
     async def check_repeat(self, user_id, file_unique_id):
-        # فقط فایل‌هایی که هنوز منقضی نشده‌اند
         expire_threshold = time.time() - Telegram.EXPIRE_TIME
         
         last_file = await self.file.find_one(
             {
                 "user_id": user_id,
                 "file_unique_id": file_unique_id,
-                "time": {"$gt": expire_threshold}  # فقط فایل‌های فعال
+                "time": {"$gt": expire_threshold}
             },
             sort=[("time", -1)]
         )
@@ -143,10 +155,10 @@ class Database:
             last_time = last_file['time']
             if time.time() - last_time < Telegram.ANTI_REPEAT_TIME:
                 remaining = int(Telegram.ANTI_REPEAT_TIME - (time.time() - last_time))
-                return True, remaining  # تکراری است
-        return False, 0  # اجازه آپلود
+                return True, remaining
+        return False, 0
 
-# ---------------------[ ضد اسپم (۳۰ ثانیه بین هر آپلود) ]---------------------#
+# ---------------------[ CHECK SPAM ]---------------------#
     async def check_spam(self, user_id):
         user = await self.get_user(user_id)
         if not user:
@@ -154,6 +166,6 @@ class Database:
         last_send = user.get('last_send_time', 0)
         remaining = Telegram.ANTI_SPAM_TIME - (time.time() - last_send)
         if remaining > 0:
-            return remaining, True  # اسپم است
+            return remaining, True
         await self.col.update_one({'id': user_id}, {'$set': {'last_send_time': time.time()}})
-        return 0, False  # اجازه آپلود
+        return 0, False
