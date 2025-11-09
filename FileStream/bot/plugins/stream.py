@@ -4,7 +4,7 @@ from FileStream.bot import FileStream, multi_clients
 from FileStream.utils.bot_utils import (
     is_user_banned, is_user_exist, is_user_joined,
     gen_link, is_channel_banned, is_channel_exist,
-    is_user_authorized, seconds_to_hms
+    is_user_authorized, seconds_to_hms  # ایمپورت تابع جدید
 )
 from FileStream.utils.database import Database
 from FileStream.utils.file_properties import get_file_ids, get_file_info
@@ -15,7 +15,6 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.enums.parse_mode import ParseMode
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
-
 
 # ====================== PRIVATE FILE HANDLER ======================
 @FileStream.on_message(
@@ -47,8 +46,9 @@ async def private_receive_handler(bot: Client, message: Message):
     # چک ضد تکرار
     is_repeat, remaining_repeat = await db.check_repeat(message.from_user.id, file_unique_id)
     if is_repeat:
+        remaining_readable = seconds_to_hms(remaining_repeat)  # استفاده از تابع جدید
         await message.reply_text(
-            f"این فایل هنوز معتبر است! لینک قبلی تا **{seconds_to_hms(remaining_repeat)}** دیگر فعال است.",
+            f"این فایل هنوز معتبر است! لینک قبلی تا **{remaining_readable}** دیگر فعال است.",
             parse_mode=ParseMode.MARKDOWN,
             quote=True
         )
@@ -57,8 +57,9 @@ async def private_receive_handler(bot: Client, message: Message):
     # چک ضد اسپم
     remaining_spam, is_spam = await db.check_spam(message.from_user.id)
     if is_spam:
+        remaining_readable = seconds_to_hms(int(remaining_spam))  # استفاده از تابع جدید
         await message.reply_text(
-            f"اسپم نکنید! منتظر بمانید **{seconds_to_hms(int(remaining_spam))}**",
+            f"اسپم نکنید! منتظر بمانید **{remaining_readable}**",
             parse_mode=ParseMode.MARKDOWN,
             quote=True
         )
@@ -78,20 +79,16 @@ async def private_receive_handler(bot: Client, message: Message):
             await message.reply_text("لینک منقضی شده است!")
             return
 
-        # --- 3. زمان باقی‌مانده ---
-        expire_time = seconds_to_hms(Telegram.EXPIRE_TIME)
-        final_text = f"{stream_text}\n\n<b>زمان باقی‌مانده:</b> <code>{expire_time}</code>"
-
-        # --- 4. ارسال پیام لینک ---
+        # --- 3. ارسال پیام لینک ---
         reply_msg = await message.reply_text(
-            text=final_text,
+            text=stream_text,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
             reply_markup=reply_markup,
             quote=True
         )
 
-        # --- 5. زمان‌بندی حذف + پاک کردن دیتابیس ---
+        # --- 4. زمان‌بندی حذف + پاک کردن دیتابیس ---
         expire_delay = max(Telegram.EXPIRE_TIME, 1)
         asyncio.create_task(
             delete_after_expire(
