@@ -25,6 +25,9 @@ class Telegram:
     MODE = env.get("MODE", "primary")
     SECONDARY = True if MODE.lower() == "secondary" else False
     AUTH_USERS = list(set(int(x) for x in str(env.get("AUTH_USERS", "")).split()))
+    EXPIRE_TIME = int(env.get("EXPIRE_TIME", 3600))  # پیش‌فرض 1 ساعت (به ثانیه)
+    ANTI_REPEAT_TIME = int(env.get("ANTI_REPEAT_TIME", 300))  # پیش‌فرض 5 دقیقه (به ثانیه)
+    ANTI_SPAM_TIME = int(env.get("ANTI_SPAM_TIME", 60))  # پیش‌فرض 1 دقیقه (به ثانیه)
 
 class Server:
     PORT = int(env.get("PORT", 80))
@@ -36,5 +39,3 @@ class Server:
     URL = "http{}://{}{}/".format(
         "s" if HAS_SSL else "", FQDN, "" if NO_PORT else ":" + str(PORT)
     )
-
-
