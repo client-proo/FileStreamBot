@@ -6,7 +6,7 @@ import asyncio
 import aiofiles
 import datetime
 import logging
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, CallbackQuery
 
 from FileStream.utils.broadcast_helper import send_msg
 from FileStream.utils.database import Database
@@ -14,7 +14,6 @@ from FileStream.bot import FileStream
 from FileStream.server.exceptions import FIleNotFound
 from FileStream.config import Telegram, Server
 from pyrogram import filters, Client
-from pyrogram.types import Message
 from pyrogram.enums.parse_mode import ParseMode
 
 # تنظیم لاگ‌گیری
@@ -359,24 +358,12 @@ async def show_users_page(c: Client, m: Message, users_list: list, page: int, to
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        # اگر پیام اول است، ارسال کن وگرنه ادیت کن
-        if hasattr(m, 'users_message_id'):
-            await c.edit_message_text(
-                chat_id=m.chat.id,
-                message_id=m.users_message_id,
-                text=text,
-                reply_markup=reply_markup,
-                parse_mode=ParseMode.MARKDOWN
-            )
-        else:
-            sent_msg = await m.reply_text(
-                text=text,
-                reply_markup=reply_markup,
-                parse_mode=ParseMode.MARKDOWN,
-                quote=True
-            )
-            # ذخیره ID پیام برای ادیت بعدی
-            m.users_message_id = sent_msg.id
+        await m.reply_text(
+            text=text,
+            reply_markup=reply_markup,
+            parse_mode=ParseMode.MARKDOWN,
+            quote=True
+        )
             
     except Exception as e:
         logger.error(f"خطا در نمایش صفحه کاربران: {e}")
@@ -493,22 +480,15 @@ async def users_callback_handler(c: Client, query: CallbackQuery):
     """مدیریت callbackهای مربوط به کاربران"""
     try:
         data = query.data
-        users_list = []
-        total_users = await db.total_users_count()
-        
-        # دریافت لیست کاربران
-        all_users = await db.get_all_users()
-        async for user in all_users:
-            users_list.append(user)
-        users_list.sort(key=lambda x: x.get('join_date', 0), reverse=True)
         
         if data == "users_refresh":
             # بروزرسانی لیست
-            await show_users_page(c, query, users_list, 1, total_users)
+            await show_users(c, query.message)
             await query.answer("✅ لیست بروزرسانی شد")
             
         elif data == "users_stats":
             # نمایش آمار کامل
+            total_users = await db.total_users_count()
             banned_count = await db.total_banned_users_count()
             active_count = total_users - banned_count
             
@@ -531,7 +511,7 @@ async def users_callback_handler(c: Client, query: CallbackQuery):
             
         elif data == "users_back":
             # بازگشت به لیست
-            await show_users_page(c, query, users_list, 1, total_users)
+            await show_users(c, query.message)
             await query.answer()
             
         elif data == "users_close":
@@ -542,7 +522,14 @@ async def users_callback_handler(c: Client, query: CallbackQuery):
         elif data.startswith("users_"):
             # تغییر صفحه
             page = int(data.split("_")[1])
-            await show_users_page(c, query, users_list, page, total_users)
+            all_users = await db.get_all_users()
+            users_list = []
+            async for user in all_users:
+                users_list.append(user)
+            users_list.sort(key=lambda x: x.get('join_date', 0), reverse=True)
+            total_users = await db.total_users_count()
+            
+            await show_users_page(c, query.message, users_list, page, total_users)
             await query.answer()
             
     except Exception as e:
