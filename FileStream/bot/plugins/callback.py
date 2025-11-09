@@ -1,10 +1,11 @@
 import datetime
 import math
+import time
 from FileStream import __version__
 from FileStream.bot import FileStream
 from FileStream.config import Telegram, Server
 from FileStream.utils.translation import LANG, BUTTON
-from FileStream.utils.bot_utils import gen_link
+from FileStream.utils.bot_utils import gen_link, seconds_to_hms
 from FileStream.utils.database import Database
 from FileStream.utils.human_readable import humanbytes
 from FileStream.server.exceptions import FIleNotFound
@@ -97,7 +98,24 @@ async def gen_file_list_button(file_list_no: int, user_id: int):
 
     file_list=[]
     async for x in user_files:
-        file_list.append([InlineKeyboardButton(x["file_name"], callback_data=f"myfile_{x['_id']}_{file_list_no}")])
+        # محاسبه زمان باقی‌مانده برای هر فایل
+        create_time = x['time']
+        expire_time = create_time + Telegram.EXPIRE_TIME
+        remaining_seconds = int(expire_time - time.time())
+        
+        if remaining_seconds <= 0:
+            remaining_text = "⏰ منقضی شده"
+        else:
+            remaining_text = f"⏰ {seconds_to_hms(remaining_seconds)}"
+        
+        # اضافه کردن زمان باقی‌مانده به نام فایل
+        file_name = x["file_name"]
+        if len(file_name) > 20:
+            file_name = file_name[:20] + "..."
+        
+        button_text = f"{file_name}\n{remaining_text}"
+        file_list.append([InlineKeyboardButton(button_text, callback_data=f"myfile_{x['_id']}_{file_list_no}")])
+    
     if total_files > 10:
         file_list.append(
                 [InlineKeyboardButton("◄", callback_data="{}".format("userfiles_"+str(file_list_no-1) if file_list_no > 1 else 'N/A')),
@@ -134,6 +152,18 @@ async def gen_file_menu(_id, file_list_no, update: CallbackQuery):
     else:
         file_type = "Unknown"
 
+    # محاسبه زمان باقی‌مانده
+    create_time = myfile_info['time']
+    expire_time = create_time + Telegram.EXPIRE_TIME
+    remaining_seconds = int(expire_time - time.time())
+    
+    if remaining_seconds <= 0:
+        remaining_readable = "❌ منقضی شده"
+        expire_status = "❌ منقضی شده"
+    else:
+        remaining_readable = seconds_to_hms(remaining_seconds)
+        expire_status = f"⏰ {remaining_readable}"
+
     page_link = f"{Server.URL}watch/{myfile_info['_id']}"
     stream_link = f"{Server.URL}dl/{myfile_info['_id']}"
     if "video" in file_type.lower():
@@ -158,12 +188,17 @@ async def gen_file_menu(_id, file_list_no, update: CallbackQuery):
     TiMe = myfile_info['time']
     if type(TiMe) == float:
         date = datetime.datetime.fromtimestamp(TiMe)
+    
     await update.edit_message_caption(
-        caption="**🪪 نام فایل :** `{}`\n**📦 حجم فایل :** `{}`\n**🗂 نوع فایل :** `{}`\n**📅 تاریخ ایجاد :** `{}`".format(myfile_info['file_name'],
-                                                                                                                    humanbytes(int(myfile_info['file_size'])),
-                                                                                                                    file_type,
-                                                                                                                    TiMe if isinstance(TiMe,str) else date.date()),
-                                                                                                                    reply_markup=MYFILES_BUTTONS )
+        caption="**🪪 نام فایل :** `{}`\n**📦 حجم فایل :** `{}`\n**🗂 نوع فایل :** `{}`\n**⏰ وضعیت انقضا :** `{}`\n**📅 تاریخ ایجاد :** `{}`".format(
+            myfile_info['file_name'],
+            humanbytes(int(myfile_info['file_size'])),
+            file_type,
+            expire_status,
+            TiMe if isinstance(TiMe,str) else date.date()
+        ),
+        reply_markup=MYFILES_BUTTONS 
+    )
 
 
 async def delete_user_file(_id, file_list_no: int, update:CallbackQuery):
@@ -195,4 +230,3 @@ async def delete_user_filex(_id, update:CallbackQuery):
             caption= "**فایل با موفقیت حذف شد !**\n\n",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✖️ بستن", callback_data=f"close")]])
         )
-
