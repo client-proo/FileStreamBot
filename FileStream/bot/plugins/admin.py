@@ -83,6 +83,26 @@ def get_time_ago(timestamp: float) -> str:
     else:
         return f"{int(diff // 2592000)} ماه قبل"
 
+def format_user_info(user_data):
+    """فرمت‌دهی اطلاعات کاربر"""
+    user_id = user_data['id']
+    username = user_data.get('username', 'ندارد')
+    first_name = user_data.get('first_name', '')
+    last_name = user_data.get('last_name', '')
+    
+    # ساخت نام کامل
+    full_name = f"{first_name} {last_name}".strip()
+    if not full_name:
+        full_name = "نامشخص"
+    
+    # ساخت لینک کاربر
+    if username and username != 'ندارد':
+        user_link = f"@{username}"
+    else:
+        user_link = f"[لینک کاربر](tg://user?id={user_id})"
+    
+    return full_name, user_link, username
+
 @FileStream.on_message(filters.command("status") & filters.private & filters.user(Telegram.OWNER_ID))
 async def sts(c: Client, m: Message):
     current_date = get_jalali_datetime()
@@ -222,7 +242,7 @@ async def sts(c: Client, m: Message):
 
 @FileStream.on_message(filters.command("users") & filters.private & filters.user(Telegram.OWNER_ID))
 async def show_users(c: Client, m: Message):
-    """نمایش لیست کاربران"""
+    """نمایش لیست کاربران با اطلاعات کامل"""
     try:
         all_users = await db.get_all_users()
         total_users = await db.total_users_count()
@@ -245,9 +265,9 @@ async def show_users(c: Client, m: Message):
 
 
 async def show_users_page(c: Client, m: Message, users_list: list, page: int, total_users: int):
-    """نمایش یک صفحه از کاربران"""
+    """نمایش یک صفحه از کاربران با اطلاعات کامل"""
     try:
-        users_per_page = 10
+        users_per_page = 8  # کاهش به 8 کاربر در صفحه به دلیل اطلاعات بیشتر
         start_idx = (page - 1) * users_per_page
         end_idx = start_idx + users_per_page
         page_users = users_list[start_idx:end_idx]
@@ -266,14 +286,18 @@ async def show_users_page(c: Client, m: Message, users_list: list, page: int, to
             join_date = user.get('join_date', 0)
             links_count = user.get('Links', 0)
             
+            # فرمت‌دهی اطلاعات کاربر
+            full_name, user_link, username = format_user_info(user)
             join_date_str = convert_to_jalali(join_date)
             
             is_banned = await db.is_user_banned(user_id)
             status = "🚫 مسدود" if is_banned else "✅ فعال"
             
-            text += f"**{i}. کاربر 🆔 `{user_id}`**\n"
-            text += f"   ├ 📅 تاریخ عضویت: `{join_date_str}`\n"
-            text += f"   ├ 🔗 فایل‌های آپلود شده: `{links_count}`\n"
+            text += f"**{i}. {full_name}**\n"
+            text += f"   ├ 🆔 آیدی: `{user_id}`\n"
+            text += f"   ├ 📧 یوزرنیم: {user_link}\n"
+            text += f"   ├ 📅 عضویت: `{join_date_str}`\n"
+            text += f"   ├ 🔗 فایل‌ها: `{links_count}`\n"
             text += f"   └ 🎯 وضعیت: {status}\n\n"
             
             if i < min(end_idx, total_users):
@@ -333,6 +357,8 @@ async def user_info(c: Client, m: Message):
         last_send_time = user.get('last_send_time', 0)
         is_banned = await db.is_user_banned(user_id)
         
+        # فرمت‌دهی اطلاعات کاربر
+        full_name, user_link, username = format_user_info(user)
         join_date_str = convert_to_jalali(join_date)
         last_active_str = convert_to_jalali(last_send_time) if last_send_time else "هرگز"
         
@@ -340,7 +366,9 @@ async def user_info(c: Client, m: Message):
         last_active_ago = get_time_ago(last_send_time) if last_send_time else "فعالیت نداشته"
         
         text = f"**👤 اطلاعات کامل کاربر**\n\n"
+        text += f"**👤 نام کامل:** `{full_name}`\n"
         text += f"**🆔 آیدی کاربر:** `{user_id}`\n"
+        text += f"**📧 یوزرنیم:** {user_link}\n"
         text += f"**🎯 وضعیت:** {'🚫 مسدود' if is_banned else '✅ فعال'}\n\n"
         
         text += f"**📅 تاریخ عضویت:**\n"
@@ -354,7 +382,30 @@ async def user_info(c: Client, m: Message):
         
         text += f"**🗓️ تاریخ گزارش:** `{get_jalali_datetime()}`"
         
-        await m.reply_text(text, parse_mode=ParseMode.MARKDOWN, quote=True)
+        # دکمه‌های مدیریت کاربر
+        keyboard = [
+            [
+                InlineKeyboardButton("🚫 مسدود کردن", callback_data=f"ban_{user_id}"),
+                InlineKeyboardButton("✅ رفع مسدودیت", callback_data=f"unban_{user_id}")
+            ],
+            [
+                InlineKeyboardButton("🗑️ حذف کاربر", callback_data=f"delete_{user_id}"),
+                InlineKeyboardButton("📨 پیام به کاربر", callback_data=f"message_{user_id}")
+            ],
+            [
+                InlineKeyboardButton("🔙 بازگشت به لیست", callback_data="users_back"),
+                InlineKeyboardButton("❌ بستن", callback_data="users_close")
+            ]
+        ]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await m.reply_text(
+            text=text,
+            reply_markup=reply_markup,
+            parse_mode=ParseMode.MARKDOWN,
+            quote=True
+        )
         
     except ValueError:
         await m.reply_text("❌ آیدی کاربر باید عددی باشد.", quote=True)
@@ -378,10 +429,18 @@ async def users_callback_handler(c: Client, query: CallbackQuery):
             banned_count = await db.total_banned_users_count()
             active_count = total_users - banned_count
             
+            # محاسبه کاربران با یوزرنیم
+            all_users = await db.get_all_users()
+            users_with_username = 0
+            async for user in all_users:
+                if user.get('username') and user.get('username') != 'ندارد':
+                    users_with_username += 1
+            
             stats_text = f"**📊 آمار کامل کاربران**\n\n"
             stats_text += f"👥 کاربران کل: `{total_users}`\n"
             stats_text += f"✅ کاربران فعال: `{active_count}`\n"
             stats_text += f"🚫 کاربران مسدود: `{banned_count}`\n"
+            stats_text += f"📧 کاربران با یوزرنیم: `{users_with_username}`\n"
             stats_text += f"📈 درصد فعال: `{(active_count/total_users)*100:.1f}%`\n\n"
             stats_text += f"🗓️ **تاریخ:** `{get_jalali_datetime()}`"
             
@@ -431,29 +490,38 @@ async def user_stats(c: Client, m: Message):
         banned_users = await db.total_banned_users_count()
         active_users = total_users - banned_users
         
-        recent_users = []
+        # محاسبه کاربران با یوزرنیم
         all_users = await db.get_all_users()
+        users_with_username = 0
+        recent_users = []
         count = 0
+        
         async for user in all_users:
+            if user.get('username') and user.get('username') != 'ندارد':
+                users_with_username += 1
+            
             if count < 5:
                 recent_users.append(user)
                 count += 1
-            else:
-                break
         
         stats_text = f"""📊 **آمار دقیق کاربران**
 
 👥 **کاربران کل:** `{total_users}`
 ✅ **کاربران فعال:** `{active_users}`
 🚫 **کاربران مسدود:** `{banned_users}`
+📧 **کاربران با یوزرنیم:** `{users_with_username}`
 
 **کاربران اخیر:**
 """
         
         for user in recent_users:
             user_id = user['id']
+            full_name, user_link, username = format_user_info(user)
             join_date_str = convert_to_jalali(user.get('join_date', time.time()))
-            stats_text += f"├ 👤 `{user_id}` - {join_date_str}\n"
+            
+            stats_text += f"├ 👤 {full_name}\n"
+            stats_text += f"│  ├ 🆔 `{user_id}`\n"
+            stats_text += f"│  └ {user_link} - {join_date_str}\n"
         
         stats_text += f"\n🗓️ **تاریخ گزارش:** `{get_jalali_datetime()}`"
         
