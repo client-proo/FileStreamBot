@@ -89,78 +89,86 @@ def seconds_to_hms(seconds: int) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 async def gen_link(_id):
-    file_info = await db.get_file(_id)
-    create_time = file_info['time']
-    expire_time = create_time + Telegram.EXPIRE_TIME
-    remaining_seconds = int(expire_time - time.time())
-    if remaining_seconds <= 0:
-        return None, "لینک منقضی شده است"  # اگر قبلاً منقضی، خطا
+    try:
+        file_info = await db.get_file(_id)
+        create_time = file_info['time']
+        expire_time = create_time + Telegram.EXPIRE_TIME
+        remaining_seconds = int(expire_time - time.time())
+        
+        if remaining_seconds <= 0:
+            return None, "❌ لینک منقضی شده است"
 
-    # تاریخ شمسی انقضا (به وقت ایران)
-    tz_iran = pytz.timezone('Asia/Tehran')
-    expire_dt = datetime.fromtimestamp(expire_time, tz_iran)
-    expire_jalali = jdatetime.fromgregorian(datetime=expire_dt).strftime('%Y/%m/%d %H:%M:%S')
+        # تاریخ شمسی انقضا (به وقت ایران)
+        tz_iran = pytz.timezone('Asia/Tehran')
+        expire_dt = datetime.fromtimestamp(expire_time, tz_iran)
+        expire_jalali = jdatetime.fromgregorian(datetime=expire_dt).strftime('%Y/%m/%d %H:%M:%S')
 
-    # شمارش معکوس
-    remaining_hms = seconds_to_hms(remaining_seconds)
+        # شمارش معکوس
+        remaining_hms = seconds_to_hms(remaining_seconds)
 
-    file_name = file_info['file_name']
-    file_size = humanbytes(file_info['file_size'])
-    mime_type = file_info['mime_type']
+        file_name = file_info['file_name']
+        file_size = humanbytes(file_info['file_size'])
+        mime_type = file_info['mime_type']
 
-    page_link = f"{Server.URL}watch/{_id}"
-    stream_link = f"{Server.URL}dl/{_id}"
-    file_link = f"https://t.me/{FileStream.username}?start=file_{_id}"
+        page_link = f"{Server.URL}watch/{_id}"
+        stream_link = f"{Server.URL}dl/{_id}"
+        file_link = f"https://t.me/{FileStream.username}?start=file_{_id}"
 
-    if "video" in mime_type:
-        stream_text = LANG.STREAM_TEXT.format(file_name, file_size, stream_link, page_link, file_link)
-        stream_text += f"\n\n📅 تاریخ انقضا (شمسی): {expire_jalali}\n⏳ زمان باقی‌مانده تا انقضا: {remaining_hms}"
-        reply_markup = InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton("🖥️ پخش آنلاین", url=page_link), InlineKeyboardButton("📥 دانلود", url=stream_link)],
-                [InlineKeyboardButton("📂 دریافت فایل", url=file_link), InlineKeyboardButton("🗑 حذف فایل", callback_data=f"msgdelpvt_{_id}")],
-                [InlineKeyboardButton("✖️ بستن", callback_data="close")]
-            ]
-        )
-    else:
-        stream_text = LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link)
-        stream_text += f"\n\n📅 تاریخ انقضا (شمسی): {expire_jalali}\n⏳ زمان باقی‌مانده تا انقضا: {remaining_hms}"
-        reply_markup = InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton("📥 دانلود", url=stream_link)],
-                [InlineKeyboardButton("📂 دریافت فایل", url=file_link), InlineKeyboardButton("🗑 حذف فایل", callback_data=f"msgdelpvt_{_id}")],
-                [InlineKeyboardButton("✖️ بستن", callback_data="close")]
-            ]
-        )
-    return reply_markup, stream_text
+        if "video" in mime_type:
+            stream_text = LANG.STREAM_TEXT.format(file_name, file_size, stream_link, page_link, file_link)
+            stream_text += f"\n\n📅 تاریخ انقضا (شمسی): {expire_jalali}\n⏳ زمان باقی‌مانده تا انقضا: {remaining_hms}"
+            reply_markup = InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🖥️ پخش آنلاین", url=page_link), InlineKeyboardButton("📥 دانلود", url=stream_link)],
+                    [InlineKeyboardButton("📂 دریافت فایل", url=file_link), InlineKeyboardButton("🗑 حذف فایل", callback_data=f"msgdelpvt_{_id}")],
+                    [InlineKeyboardButton("✖️ بستن", callback_data="close")]
+                ]
+            )
+        else:
+            stream_text = LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link)
+            stream_text += f"\n\n📅 تاریخ انقضا (شمسی): {expire_jalali}\n⏳ زمان باقی‌مانده تا انقضا: {remaining_hms}"
+            reply_markup = InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("📥 دانلود", url=stream_link)],
+                    [InlineKeyboardButton("📂 دریافت فایل", url=file_link), InlineKeyboardButton("🗑 حذف فایل", callback_data=f"msgdelpvt_{_id}")],
+                    [InlineKeyboardButton("✖️ بستن", callback_data="close")]
+                ]
+            )
+        return reply_markup, stream_text
+        
+    except Exception as e:
+        return None, "❌ خطا در تولید لینک"
 
 #---------------------[ GEN STREAM LINKS FOR CHANNEL ]---------------------#
 
 async def gen_linkx(m:Message , _id, name: list):
-    file_info = await db.get_file(_id)
-    file_name = file_info['file_name']
-    mime_type = file_info['mime_type']
-    file_size = humanbytes(file_info['file_size'])
+    try:
+        file_info = await db.get_file(_id)
+        file_name = file_info['file_name']
+        mime_type = file_info['mime_type']
+        file_size = humanbytes(file_info['file_size'])
 
-    page_link = f"{Server.URL}watch/{_id}"
-    stream_link = f"{Server.URL}dl/{_id}"
-    file_link = f"https://t.me/{FileStream.username}?start=file_{_id}"
+        page_link = f"{Server.URL}watch/{_id}"
+        stream_link = f"{Server.URL}dl/{_id}"
+        file_link = f"https://t.me/{FileStream.username}?start=file_{_id}"
 
-    if "video" in mime_type:
-        stream_text= LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, page_link)
-        reply_markup = InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton("🖥️ پخش آنلاین", url=page_link), InlineKeyboardButton("📥 دانلود", url=stream_link)]
-            ]
-        )
-    else:
-        stream_text= LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link)
-        reply_markup = InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton("📥 دانلود", url=stream_link)]
-            ]
-        )
-    return reply_markup, stream_text
+        if "video" in mime_type:
+            stream_text= LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, page_link)
+            reply_markup = InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🖥️ پخش آنلاین", url=page_link), InlineKeyboardButton("📥 دانلود", url=stream_link)]
+                ]
+            )
+        else:
+            stream_text= LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link)
+            reply_markup = InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("📥 دانلود", url=stream_link)]
+                ]
+            )
+        return reply_markup, stream_text
+    except Exception:
+        return None, "❌ فایل پیدا نشد یا منقضی شده است"
 
 #---------------------[ USER BANNED ]---------------------#
 
