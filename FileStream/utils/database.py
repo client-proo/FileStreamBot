@@ -4,6 +4,7 @@ import motor.motor_asyncio
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
 from FileStream.server.exceptions import FIleNotFound
+from FileStream.config import Telegram
 
 class Database:
     def __init__(self, uri, database_name):
