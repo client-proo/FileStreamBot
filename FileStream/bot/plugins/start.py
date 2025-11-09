@@ -52,34 +52,34 @@ async def start(bot: Client, message: Message):
                     )
 
             except FIleNotFound as e:
-                await message.reply_text("File Not Found")
+                await message.reply_text("❌ فایل پیدا نشد یا منقضی شده است")
             except Exception as e:
-                await message.reply_text("Something Went Wrong")
+                await message.reply_text("❌ خطایی رخ داد")
                 logging.error(e)
 
         elif "file_" in message.text:
             try:
+                # استفاده از تابع get_file که خودش چک انقضا می‌کند
                 file_check = await db.get_file(usr_cmd)
-                db_id = str(file_check['_id'])
                 file_id = file_check['file_id']
                 file_name = file_check['file_name']
-                if db_id == usr_cmd:
-                    filex = await message.reply_cached_media(file_id=file_id, caption=f'**{file_name}**')
-                    await asyncio.sleep(3600)
-                    try:
-                        await filex.delete()
-                        await message.delete()
-                    except Exception:
-                        pass
+                
+                filex = await message.reply_cached_media(file_id=file_id, caption=f'**{file_name}**')
+                await asyncio.sleep(3600)
+                try:
+                    await filex.delete()
+                    await message.delete()
+                except Exception:
+                    pass
 
             except FIleNotFound as e:
-                await message.reply_text("**File Not Found**")
+                await message.reply_text("❌ این لینک منقضی شده است یا وجود ندارد!")
             except Exception as e:
-                await message.reply_text("Something Went Wrong")
+                await message.reply_text("❌ خطایی رخ داد")
                 logging.error(e)
 
         else:
-            await message.reply_text(f"**Invalid Command**")
+            await message.reply_text(f"**دستور نامعتبر**")
 
 @FileStream.on_message(filters.private & filters.command(["about"]))
 async def start(bot, message):
@@ -145,4 +145,3 @@ async def my_files(bot: Client, message: Message):
     await message.reply_photo(photo=Telegram.FILE_PIC,
                               caption="🗂 تعداد کل فایل ها: {}".format(total_files),
                               reply_markup=InlineKeyboardMarkup(file_list))
-
