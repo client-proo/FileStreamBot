@@ -10,7 +10,9 @@ import asyncio
 from typing import (
     Union
 )
-
+from jdatetime import datetime as jdatetime
+import pytz
+from datetime import datetime
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 
@@ -71,7 +73,7 @@ async def is_user_joined(bot, message: Message):
         return False
     except Exception:
         await message.reply_text(
-            text = f"<i>Sᴏᴍᴇᴛʜɪɴɢ ᴡʀᴏɴɢ ᴄᴏɴᴛᴀᴄᴛ ᴍʏ ᴅᴇᴠᴇʟᴏᴘᴇʀ</i> <b><a href='https://t.me/{Telegram.UPDATES_CHANNEL}'>[ ᴄʟɪᴄᴋ ʜᴇʀᴇ ]</a></b>",
+            text = f"<i>Sᴏᴍᴇᴛʜɪɴɢ ᴡʀᴏɴɢ ᴄᴏɴᴛᴀᴄᴛ ᴍʏ ᴅᴇᴠᴇʟᴏᴘᴇʀ</i> <b><a href='https://t.me/{Telegram.UPDATES_CHANNEL}'>[ ᴄʟɪᴄᴋ ʜᴇʀᴇ]</a></b>",
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True)
         return False
@@ -79,8 +81,28 @@ async def is_user_joined(bot, message: Message):
 
 #---------------------[ PRIVATE GEN LINK + CALLBACK ]---------------------#
 
+def seconds_to_hms(seconds: int) -> str:
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
 async def gen_link(_id):
     file_info = await db.get_file(_id)
+    create_time = file_info['time']
+    expire_time = create_time + Telegram.EXPIRE_TIME
+    remaining_seconds = int(expire_time - time.time())
+    if remaining_seconds <= 0:
+        return None, "لینک منقضی شده است"  # اگر قبلاً منقضی، خطا
+
+    # تاریخ شمسی انقضا (به وقت ایران)
+    tz_iran = pytz.timezone('Asia/Tehran')
+    expire_dt = datetime.fromtimestamp(expire_time, tz_iran)
+    expire_jalali = jdatetime.fromgregorian(datetime=expire_dt).strftime('%Y/%m/%d %H:%M:%S')
+
+    # شمارش معکوس
+    remaining_hms = seconds_to_hms(remaining_seconds)
+
     file_name = file_info['file_name']
     file_size = humanbytes(file_info['file_size'])
     mime_type = file_info['mime_type']
@@ -91,6 +113,7 @@ async def gen_link(_id):
 
     if "video" in mime_type:
         stream_text = LANG.STREAM_TEXT.format(file_name, file_size, stream_link, page_link, file_link)
+        stream_text += f"\n\n📅 تاریخ انقضا (شمسی): {expire_jalali}\n⏳ زمان باقی‌مانده تا انقضا: {remaining_hms}"
         reply_markup = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton("🖥️ پخش آنلاین", url=page_link), InlineKeyboardButton("📥 دانلود", url=stream_link)],
@@ -100,6 +123,7 @@ async def gen_link(_id):
         )
     else:
         stream_text = LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link)
+        stream_text += f"\n\n📅 تاریخ انقضا (شمسی): {expire_jalali}\n⏳ زمان باقی‌مانده تا انقضا: {remaining_hms}"
         reply_markup = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton("📥 دانلود", url=stream_link)],
