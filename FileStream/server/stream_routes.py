@@ -10,6 +10,9 @@ from FileStream.config import Telegram, Server
 from FileStream.server.exceptions import FIleNotFound, InvalidHash
 from FileStream import utils, StartTime, __version__
 from FileStream.utils.render_template import render_page
+from FileStream.utils.database import Database
+
+db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 
 routes = web.RouteTableDef()
 
@@ -64,11 +67,16 @@ async def stream_handler(request: web.Request):
 class_cache = {}
 
 async def media_streamer(request: web.Request, db_id: str):
+    file_info = await db.get_file(db_id)
+    create_time = file_info['time']
+    if time.time() > create_time + Telegram.EXPIRE_TIME:
+        raise web.HTTPForbidden(text="لینک منقضی شده است")
+
     range_header = request.headers.get("Range", 0)
-    
+
     index = min(work_loads, key=work_loads.get)
     faster_client = multi_clients[index]
-    
+
     if Telegram.MULTI_CLIENT:
         logging.info(f"Client {index} is now serving {request.headers.get('X-FORWARDED-FOR',request.remote)}")
 
@@ -82,7 +90,7 @@ async def media_streamer(request: web.Request, db_id: str):
     logging.debug("before calling get_file_properties")
     file_id = await tg_connect.get_file_properties(db_id, multi_clients)
     logging.debug("after calling get_file_properties")
-    
+
     file_size = file_id.file_size
 
     if range_header:
