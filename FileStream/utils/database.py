@@ -18,7 +18,9 @@ class Database:
         return dict(
             id=id,
             join_date=time.time(),
-            Links=0
+            Links=0,
+            recent_files={},  # جدید
+            last_send_time=0  # جدید
         )
 
 # ---------------------[ ADD USER ]---------------------#
@@ -65,7 +67,7 @@ class Database:
     async def total_banned_users_count(self):
         count = await self.black.count_documents({})
         return count
-        
+
 # ---------------------[ ADD FILE TO DB ]---------------------#
     async def add_file(self, file_info):
         file_info["time"] = time.time()
@@ -92,7 +94,7 @@ class Database:
             return file_info
         except InvalidId:
             raise FIleNotFound
-    
+
     async def get_file_by_fileuniqueid(self, id, file_unique_id, many=False):
         if many:
             return self.file.find({"file_unique_id": file_unique_id})
@@ -126,9 +128,32 @@ class Database:
 #             if files < 11:
 #                 return True
 #             return False
-        
+
     async def count_links(self, id, operation: str):
         if operation == "-":
             await self.col.update_one({"id": id}, {"$inc": {"Links": -1}})
         elif operation == "+":
             await self.col.update_one({"id": id}, {"$inc": {"Links": 1}})
+
+    async def check_repeat(self, user_id, file_unique_id):
+        user = await self.get_user(user_id)
+        if not user:
+            return False
+        recent = user.get('recent_files', {})
+        last_time = recent.get(file_unique_id, 0)
+        if time.time() - last_time < Telegram.ANTI_REPEAT_TIME:
+            return True  # تکراری است
+        recent[file_unique_id] = time.time()
+        await self.col.update_one({'id': user_id}, {'$set': {'recent_files': recent}})
+        return False
+
+    async def check_spam(self, user_id):
+        user = await self.get_user(user_id)
+        if not user:
+            return 0, False
+        last_send = user.get('last_send_time', 0)
+        remaining = Telegram.ANTI_SPAM_TIME - (time.time() - last_send)
+        if remaining > 0:
+            return remaining, True  # اسپم است
+        await self.col.update_one({'id': user_id}, {'$set': {'last_send_time': time.time()}})
+        return 0, False
