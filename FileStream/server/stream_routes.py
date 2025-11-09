@@ -1,6 +1,5 @@
 import time
 import math
-import logging
 import mimetypes
 import traceback
 from aiohttp import web
@@ -12,7 +11,7 @@ from FileStream import utils, StartTime, __version__
 from FileStream.utils.render_template import render_page
 from FileStream.utils.database import Database
 
-db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
+db = Database(Telegram.DATABASE_DATABASE_URL, Telegram.SESSION_NAME)
 
 routes = web.RouteTableDef()
 
@@ -39,29 +38,28 @@ async def stream_handler(request: web.Request):
     try:
         path = request.match_info["path"]
         return web.Response(text=await render_page(path), content_type='text/html')
-    except InvalidHash as e:
-        raise web.HTTPForbidden(text=e.message)
-    except FIleNotFound as e:
-        raise web.HTTPNotFound(text=e.message)
+    except InvalidHash:
+        raise web.HTTPForbidden()
+    except FIleNotFound:
+        raise web.HTTPNotFound()
     except (AttributeError, BadStatusLine, ConnectionResetError):
         pass
 
 
 @routes.get("/dl/{path}", allow_head=True)
-async def stream_handler(request: web.Request):
+async def download_handler(request: web.Request):
     try:
         path = request.match_info["path"]
         return await media_streamer(request, path)
-    except InvalidHash as e:
-        raise web.HTTPForbidden(text=e.message)
-    except FIleNotFound as e:
-        raise web.HTTPNotFound(text=e.message)
+    except InvalidHash:
+        raise web.HTTPForbidden()
+    except FIleNotFound:
+        raise web.HTTPNotFound()
     except (AttributeError, BadStatusLine, ConnectionResetError):
         pass
-    except Exception as e:
-        traceback.print_exc()
-        logging.error(f"Unexpected error in /dl: {e}")  # به error تغییر دادم
-        raise web.HTTPInternalServerError(text="خطای سرور")
+    except Exception:
+        raise web.HTTPInternalServerError()
+
 
 class_cache = {}
 
@@ -70,30 +68,18 @@ async def media_streamer(request: web.Request, db_id: str):
         file_info = await db.get_file(db_id)
         create_time = file_info['time']
 
-        # چک انقضا — بدون لاگ CRITICAL
+        # چک انقضا — بدون لاگ، بدون HTML
         if time.time() > create_time + Telegram.EXPIRE_TIME:
-            html_page = f"""
-            <html>
-            <head><title>لینک منقضی شده</title></head>
-            <body style="text-align:center; font-family:Arial; margin-top:50px;">
-                <h2>لینک منقضی شده است</h2>
-                <p>لطفاً فایل را دوباره برای ربات بفرستید.</p>
-                <a href="https://t.me/{FileStream.username}">
-                    <button style="padding:10px 20px; font-size:16px; cursor:pointer;">بازگشت به ربات</button>
-                </a>
-            </body>
-            </html>
-            """
-            return web.Response(text=html_page, content_type='text/html', status=403)
+            raise web.HTTPForbidden()  # فقط 403 خام
 
-        # ادامه دانلود — بدون تغییر
+        # ادامه دانلود
         range_header = request.headers.get("Range", 0)
 
         index = min(work_loads, key=work_loads.get)
         faster_client = multi_clients[index]
 
         if Telegram.MULTI_CLIENT:
-            logging.info(f"Client {index} is serving {request.remote}")
+            pass  # لاگ حذف شد
 
         if faster_client in class_cache:
             tg_connect = class_cache[faster_client]
@@ -115,7 +101,6 @@ async def media_streamer(request: web.Request, db_id: str):
         if (until_bytes > file_size) or (from_bytes < 0) or (until_bytes < from_bytes):
             return web.Response(
                 status=416,
-                body="416: Range not satisfiable",
                 headers={"Content-Range": f"bytes */{file_size}"},
             )
 
@@ -132,18 +117,15 @@ async def media_streamer(request: web.Request, db_id: str):
             file_id, index, offset, first_part_cut, last_part_cut, part_count, chunk_size
         )
 
-        mime_type = file_id.mime_type
+        mime_type = file_id.mime_type or mimetypes.guess_type(utils.get_name(file_id))[0] or "application/octet-stream"
         file_name = utils.get_name(file_id)
         disposition = "attachment"
-
-        if not mime_type:
-            mime_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
 
         return web.Response(
             status=206 if range_header else 200,
             body=body,
             headers={
-                "Content-Type": f"{mime_type}",
+                "Content-Type": mime_type,
                 "Content-Range": f"bytes {from_bytes}-{until_bytes}/{file_size}",
                 "Content-Length": str(req_length),
                 "Content-Disposition": f'{disposition}; filename="{file_name}"',
@@ -152,9 +134,8 @@ async def media_streamer(request: web.Request, db_id: str):
         )
 
     except FIleNotFound:
-        raise web.HTTPNotFound(text="فایل یافت نشد")
+        raise web.HTTPNotFound()
     except InvalidHash:
-        raise web.HTTPForbidden(text="لینک نامعتبر")
-    except Exception as e:
-        logging.error(f"Stream error: {e}")
-        raise web.HTTPInternalServerError(text="خطای سرور")
+        raise web.HTTPForbidden()
+    except Exception:
+        raise web.HTTPInternalServerError()
