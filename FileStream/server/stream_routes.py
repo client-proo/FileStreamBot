@@ -11,7 +11,8 @@ from FileStream import utils, StartTime, __version__
 from FileStream.utils.render_template import render_page
 from FileStream.utils.database import Database
 
-db = Database(Telegram.DATABASE_DATABASE_URL, Telegram.SESSION_NAME)
+db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
+
 
 routes = web.RouteTableDef()
 
