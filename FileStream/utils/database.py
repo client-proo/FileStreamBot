@@ -108,9 +108,16 @@ class Database:
             file_info = await self.file.find_one({"_id": ObjectId(_id)})
             if not file_info:
                 raise FIleNotFound
-            # چک انقضا: اگر منقضی بود، خطا بده
-            if file_info["time"] < time.time() - Telegram.EXPIRE_TIME:
+            
+            # چک انقضا در سطح دیتابیس - مهم!
+            create_time = file_info["time"]
+            if time.time() > create_time + Telegram.EXPIRE_TIME:
+                # حذف فایل منقضی شده
+                await self.delete_one_file(file_info['_id'])
+                if file_info.get('user_id'):
+                    await self.count_links(file_info['user_id'], "-")
                 raise FIleNotFound
+                
             return file_info
         except InvalidId:
             raise FIleNotFound
