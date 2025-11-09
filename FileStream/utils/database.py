@@ -3,8 +3,10 @@ import time
 import motor.motor_asyncio
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
+from datetime import datetime, timezone
 from FileStream.server.exceptions import FIleNotFound
 from FileStream.config import Telegram
+
 
 class Database:
     def __init__(self, uri, database_name):
@@ -14,7 +16,7 @@ class Database:
         self.black = self.db.blacklist
         self.file = self.db.file
 
-#---------------------[ NEW USER ]---------------------#
+    # ---------------------[ NEW USER ]---------------------#
     def new_user(self, id):
         return dict(
             id=id,
@@ -23,17 +25,17 @@ class Database:
             last_send_time=0
         )
 
-# ---------------------[ ADD USER ]---------------------#
+    # ---------------------[ ADD USER ]---------------------#
     async def add_user(self, id):
         user = self.new_user(id)
         await self.col.insert_one(user)
 
-# ---------------------[ GET USER ]---------------------#
+    # ---------------------[ GET USER ]---------------------#
     async def get_user(self, id):
         user = await self.col.find_one({'id': int(id)})
         return user
 
-# ---------------------[ CHECK USER ]---------------------#
+    # ---------------------[ CHECK USER ]---------------------#
     async def total_users_count(self):
         count = await self.col.count_documents({})
         return count
@@ -42,11 +44,11 @@ class Database:
         all_users = self.col.find({})
         return all_users
 
-# ---------------------[ REMOVE USER ]---------------------#
+    # ---------------------[ REMOVE USER ]---------------------#
     async def delete_user(self, user_id):
         await self.col.delete_many({'id': int(user_id)})
 
-# ---------------------[ BAN, UNBAN USER ]---------------------#
+    # ---------------------[ BAN, UBNAN USER ]---------------------#
     def black_user(self, id):
         return dict(
             id=id,
@@ -68,10 +70,10 @@ class Database:
         count = await self.black.count_documents({})
         return count
 
-# ---------------------[ ADD FILE TO DB ]---------------------#
+    # ---------------------[ ADD FILE TO DB ]---------------------#
     async def add_file(self, file_info):
         file_info["time"] = time.time()
-        
+
         # فقط فایل‌های فعال (غیر منقضی) رو چک کن
         expire_threshold = time.time() - Telegram.EXPIRE_TIME
         fetch_old = await self.file.find_one({
@@ -79,26 +81,35 @@ class Database:
             "file_unique_id": file_info["file_unique_id"],
             "time": {"$gt": expire_threshold}
         })
-        
+
         if fetch_old:
             return fetch_old["_id"]  # فایل فعال → برگردون همون
         else:
             await self.count_links(file_info["user_id"], "+")
             return (await self.file.insert_one(file_info)).inserted_id
 
-# ---------------------[ FIND FILE IN DB ]---------------------#
+    # ---------------------[ FIND FILE IN DB ]---------------------#
     async def find_files(self, user_id, range):
-        user_files = self.file.find({"user_id": user_id})
+        # فقط فایل‌های فعال (غیر منقضی) رو نشون بده
+        expire_threshold = time.time() - Telegram.EXPIRE_TIME
+        query = {
+            "user_id": user_id,
+            "time": {"$gt": expire_threshold}
+        }
+        user_files = self.file.find(query)
         user_files.skip(range[0] - 1)
         user_files.limit(range[1] - range[0] + 1)
         user_files.sort('_id', pymongo.DESCENDING)
-        total_files = await self.file.count_documents({"user_id": user_id})
+        total_files = await self.file.count_documents(query)
         return user_files, total_files
 
     async def get_file(self, _id):
         try:
             file_info = await self.file.find_one({"_id": ObjectId(_id)})
             if not file_info:
+                raise FIleNotFound
+            # چک انقضا: اگر منقضی بود، خطا بده
+            if file_info["time"] < time.time() - Telegram.EXPIRE_TIME:
                 raise FIleNotFound
             return file_info
         except InvalidId:
@@ -116,31 +127,35 @@ class Database:
         else:
             return await self.file.find_one(query)
 
-# ---------------------[ TOTAL FILES ]---------------------#
+    # ---------------------[ TOTAL FILES ]---------------------#
     async def total_files(self, id=None):
         if id:
-            return await self.file.count_documents({"user_id": id})
+            expire_threshold = time.time() - Telegram.EXPIRE_TIME
+            return await self.file.count_documents({
+                "user_id": id,
+                "time": {"$gt": expire_threshold}
+            })
         return await self.file.count_documents({})
 
-# ---------------------[ DELETE FILES ]---------------------#
+    # ---------------------[ DELETE FILES ]---------------------#
     async def delete_one_file(self, _id):
         await self.file.delete_one({'_id': ObjectId(_id)})
 
-# ---------------------[ UPDATE FILES ]---------------------#
+    # ---------------------[ UPDATE FILES ]---------------------#
     async def update_file_ids(self, _id, file_ids: dict):
         await self.file.update_one({"_id": ObjectId(_id)}, {"$set": {"file_ids": file_ids}})
 
-# ---------------------[ PAID SYS ]---------------------#
+    # ---------------------[ PAID SYS ]---------------------#
     async def count_links(self, id, operation: str):
         if operation == "-":
             await self.col.update_one({"id": id}, {"$inc": {"Links": -1}})
         elif operation == "+":
             await self.col.update_one({"id": id}, {"$inc": {"Links": 1}})
 
-# ---------------------[ CHECK REPEAT (تا انقضای لینک) ]---------------------#
+    # ---------------------[ CHECK REPEAT (تا انقضای لینک) ]---------------------#
     async def check_repeat(self, user_id, file_unique_id):
         expire_threshold = time.time() - Telegram.EXPIRE_TIME
-        
+
         last_file = await self.file.find_one(
             {
                 "user_id": user_id,
@@ -149,14 +164,14 @@ class Database:
             },
             sort=[("time", -1)]
         )
-        
+
         if last_file:
             last_time = last_file['time']
             remaining = int(Telegram.EXPIRE_TIME - (time.time() - last_time))
             return True, remaining  # فایل هنوز فعال است
         return False, 0  # فایل منقضی شده → اجازه آپلود
 
-# ---------------------[ CHECK SPAM ]---------------------#
+    # ---------------------[ CHECK SPAM ]---------------------#
     async def check_spam(self, user_id):
         user = await self.get_user(user_id)
         if not user:
@@ -167,3 +182,39 @@ class Database:
             return remaining, True
         await self.col.update_one({'id': user_id}, {'$set': {'last_send_time': time.time()}})
         return 0, False
+
+    # ==================== EXPIRY CLEANUP (مهم!) ====================
+    async def cleanup_expired_files(self) -> None:
+        """
+        حذف خودکار تمام فایل‌های منقضی از دیتابیس
+        - اجرا در استارت ربات
+        - اجرا هر 30 دقیقه
+        """
+        try:
+            expire_threshold = time.time() - Telegram.EXPIRE_TIME
+
+            # پیدا کردن فایل‌های منقضی
+            expired_files = await self.file.find({
+                "time": {"$lt": expire_threshold}
+            }).to_list(None)
+
+            deleted_count = 0
+            for file in expired_files:
+                file_id = file["_id"]
+                user_id = file.get("user_id")
+
+                # حذف فایل
+                await self.file.delete_one({"_id": file_id})
+                if user_id:
+                    await self.count_links(user_id, "-")
+
+                deleted_count += 1
+                print(f"[CLEANUP] Expired file deleted: {file_id} (user: {user_id})")
+
+            if deleted_count > 0:
+                print(f"[CLEANUP] {deleted_count} expired files removed from database")
+            else:
+                print("[CLEANUP] No expired files found")
+
+        except Exception as e:
+            print(f"[CLEANUP ERROR] {e}")
