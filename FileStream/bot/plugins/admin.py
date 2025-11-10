@@ -101,15 +101,8 @@ async def admin_message_handler(bot: Client, message: Message):
             )
             return
         
-        # اگر پیام ریپلای شده است
-        if message.reply_to_message:
-            await start_broadcast(bot, message, message.reply_to_message)
-        else:
-            await message.reply_text(
-                "❌ لطفا پیام مورد نظر را **ریپلای** کنید!\n\n"
-                "یا برای لغو از /cancel استفاده کنید.",
-                reply_markup=ReplyKeyboardMarkup([[KeyboardButton("🔙 بازگشت")]], resize_keyboard=True)
-            )
+        # ارسال مستقیم پیام (بدون نیاز به ریپلای)
+        await start_broadcast(bot, message, message)
         return
 
     # پردازش دکمه‌های کیبورد
@@ -132,8 +125,12 @@ async def admin_message_handler(bot: Client, message: Message):
         user_states[user_id] = "awaiting_broadcast"
         await message.reply_text(
             "📨 **ارسال پیام همگانی**\n\n"
-            "لطفا پیام مورد نظر خود را **ریپلای** کنید...\n\n"
-            "❕ برای لغو عملیات از /cancel استفاده کنید.",
+            "✅ اکنون می‌توانید:\n"
+            "• پیام جدید تایپ کنید 📝\n" 
+            "• عکس/ویدیو ارسال کنید 🖼️\n"
+            "• فایل فوروارد کنید 📎\n\n"
+            "پیام شما مستقیماً برای همه کاربران ارسال خواهد شد.\n\n"
+            "❕ برای لغو از /cancel استفاده کنید.",
             reply_markup=ReplyKeyboardMarkup([[KeyboardButton("🔙 بازگشت")]], resize_keyboard=True)
         )
     
@@ -202,22 +199,23 @@ async def start_broadcast(bot: Client, message: Message, broadcast_msg: Message)
     # فایل لاگ
     async with aiofiles.open('broadcast.txt', 'w', encoding='utf-8') as broadcast_log_file:
         async for user in all_users:
-            sts, msg = await send_msg(
-                user_id=int(user['id']),
-                message=broadcast_msg
-            )
-            if msg is not None:
-                await broadcast_log_file.write(msg)
-            if sts == 200:
+            try:
+                # ارسال پیام به کاربر
+                await broadcast_msg.copy(chat_id=int(user['id']))
                 success += 1
-            else:
+            except Exception as e:
                 failed += 1
-            if sts == 400:
-                await db.delete_user(user['id'])
+                error_msg = f"{user['id']} : {str(e)}\n"
+                await broadcast_log_file.write(error_msg)
+                
+                # اگر کاربر ربات را بلاک کرده یا خطای خاصی دارد
+                if "blocked" in str(e).lower() or "deactivated" in str(e).lower():
+                    await db.delete_user(user['id'])
+            
             done += 1
             
-            # آپدیت وضعیت هر 20 کاربر
-            if done % 20 == 0:
+            # آپدیت وضعیت هر 10 کاربر
+            if done % 10 == 0:
                 if broadcast_ids.get(broadcast_id):
                     broadcast_ids[broadcast_id].update(
                         dict(current=done, failed=failed, success=success)
@@ -260,9 +258,11 @@ async def start_broadcast(bot: Client, message: Message, broadcast_msg: Message)
             reply_markup=ADMIN_KEYBOARD,
             quote=True
         )
-        os.remove('broadcast.txt')
+        try:
+            os.remove('broadcast.txt')
+        except:
+            pass
 
-# بقیه توابع (sts, ban, unban, del) بدون تغییر می‌مانند
 @FileStream.on_message(filters.command("status") & filters.private & filters.user(Telegram.OWNER_ID))
 async def sts(c: Client, m: Message):
     await m.reply_text(text=f"""**👥 کل کاربران:** `{await db.total_users_count()}`
@@ -308,6 +308,11 @@ async def unban_handler(b, m: Message):
             await m.reply_text(text=f"** عملیات با خطا مواجه شد: {e}**", parse_mode=ParseMode.MARKDOWN, quote=True)
     else:
         await m.reply_text(text=f"`{id}`** مسدود نشده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
+
+@FileStream.on_message(filters.command("broadcast") & filters.private & filters.user(Telegram.OWNER_ID) & filters.reply)
+async def broadcast_command_handler(c, m):
+    """هندلر برای دستور /broadcast با ریپلای"""
+    await start_broadcast(c, m, m.reply_to_message)
 
 @FileStream.on_message(filters.command("del") & filters.private & filters.user(Telegram.OWNER_ID))
 async def delete_handler(c: Client, m: Message):
