@@ -15,8 +15,8 @@ import asyncio
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 
-# ایمپورت کیبورد ادمین از admin.py در پوشه plugins
-from FileStream.bot.plugins.admin import ADMIN_KEYBOARD, is_bot_active
+# ایمپورت وضعیت ربات از admin.py در پوشه plugins
+from FileStream.bot.plugins.admin import is_bot_active, ADMIN_KEYBOARD
 
 @FileStream.on_message(filters.command('start') & filters.private)
 async def start(bot: Client, message: Message):
