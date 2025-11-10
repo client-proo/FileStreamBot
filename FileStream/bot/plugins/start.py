@@ -9,17 +9,30 @@ from FileStream.config import Telegram
 from FileStream.utils.database import Database
 from FileStream.utils.translation import LANG, BUTTON
 from pyrogram import filters, Client
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, ReplyKeyboardMarkup, KeyboardButton
 from pyrogram.enums.parse_mode import ParseMode
 import asyncio
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
+
+# ایمپورت کیبورد ادمین از admin.py
+from FileStream.bot.admin import ADMIN_KEYBOARD
 
 @FileStream.on_message(filters.command('start') & filters.private)
 async def start(bot: Client, message: Message):
     if not await verify_user(bot, message):
         return
     usr_cmd = message.text.split("_")[-1]
+
+    # اگر کاربر ادمین اصلی است، کیبورد ادمین نشان داده شود
+    if message.from_user.id == Telegram.OWNER_ID:
+        if usr_cmd == "/start":
+            await message.reply_text(
+                text="🛠 **به پنل مدیریت خوش آمدید!**\n\n"
+                     "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
+                reply_markup=ADMIN_KEYBOARD
+            )
+            return
 
     if usr_cmd == "/start":
         if Telegram.START_PIC:
