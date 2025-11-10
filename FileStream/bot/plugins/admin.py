@@ -94,6 +94,16 @@ def is_admin(user_id: int) -> bool:
     """چک کردن آیا کاربر ادمین است یا نه"""
     return user_id == Telegram.OWNER_ID or user_id in admins_data
 
+# تابع برای چک کردن دسترسی کامل ادمین
+def has_full_access(user_id: int) -> bool:
+    """چک کردن آیا کاربر دسترسی کامل دارد"""
+    if user_id == Telegram.OWNER_ID:
+        return True
+    if user_id in admins_data:
+        admin_info = admins_data[user_id]
+        return 'all' in admin_info.get('permissions', [])
+    return False
+
 # کیبورد مدیریت ادمین
 ADMIN_KEYBOARD = ReplyKeyboardMarkup(
     [
@@ -167,11 +177,7 @@ async def admin_message_handler(bot: Client, message: Message):
         await message.reply_text(stats_text, reply_markup=ADMIN_KEYBOARD)
     
     elif message.text == "🔊 ارسال پیام همگانی":
-        # فقط صاحب ربات می‌تواند پیام همگانی ارسال کند
-        if message.from_user.id != Telegram.OWNER_ID:
-            await message.reply_text("❌ فقط صاحب ربات می‌تواند پیام همگانی ارسال کند.")
-            return
-            
+        # هر ادمینی می‌تواند پیام همگانی ارسال کند
         user_states[user_id] = "awaiting_broadcast"
         await message.reply_text(
             "📨 **ارسال پیام همگانی**\n\n"
@@ -185,11 +191,7 @@ async def admin_message_handler(bot: Client, message: Message):
         )
     
     elif message.text == "⚙️ تنظیمات":
-        # فقط صاحب ربات می‌تواند تنظیمات را تغییر دهد
-        if message.from_user.id != Telegram.OWNER_ID:
-            await message.reply_text("❌ فقط صاحب ربات می‌تواند تنظیمات را تغییر دهد.")
-            return
-            
+        # هر ادمینی می‌تواند تنظیمات را ببیند
         # ایجاد کیبورد اینلاین برای تنظیمات
         settings_keyboard = InlineKeyboardMarkup([
             [
@@ -218,11 +220,7 @@ async def admin_message_handler(bot: Client, message: Message):
         await message.reply_text(settings_text, reply_markup=settings_keyboard)
     
     elif message.text == "🔴 خاموش/روشن کردن ربات":
-        # فقط صاحب ربات می‌تواند ربات را خاموش/روشن کند
-        if message.from_user.id != Telegram.OWNER_ID:
-            await message.reply_text("❌ فقط صاحب ربات می‌تواند ربات را خاموش/روشن کند.")
-            return
-            
+        # هر ادمینی می‌تواند ربات را خاموش/روشن کند
         # تغییر وضعیت ربات
         bot_status = not bot_status
         save_bot_status(bot_status)  # ذخیره در فایل
@@ -272,11 +270,11 @@ async def process_add_admin(bot: Client, message: Message):
             return
         
         if target_user:
-            # اضافه کردن کاربر به لیست ادمین‌ها
+            # اضافه کردن کاربر به لیست ادمین‌ها با دسترسی کامل
             admins_data[target_user.id] = {
                 'name': target_user.first_name or "بدون نام",
                 'username': target_user.username or 'ندارد',
-                'permissions': ['view_stats']  # دسترسی پیش‌فرض
+                'permissions': ['all']  # دسترسی کامل مانند صاحب ربات
             }
             save_admins(admins_data)
             
@@ -381,9 +379,9 @@ async def show_admin_settings(bot: Client, admin_id: int, callback_query: Callba
 # هندلر برای callback_query های تنظیمات
 @FileStream.on_callback_query(filters.regex("^settings_"))
 async def settings_callback_handler(bot: Client, update: CallbackQuery):
-    # فقط صاحب ربات می‌تواند تنظیمات را تغییر دهد
-    if update.from_user.id != Telegram.OWNER_ID:
-        await update.answer("❌ فقط صاحب ربات می‌تواند تنظیمات را تغییر دهد.", show_alert=True)
+    # فقط ادمین‌ها می‌توانند تنظیمات را تغییر دهند
+    if not is_admin(update.from_user.id):
+        await update.answer("❌ فقط ادمین‌ها می‌توانند تنظیمات را تغییر دهند.", show_alert=True)
         return
         
     data = update.data
@@ -417,9 +415,9 @@ async def settings_callback_handler(bot: Client, update: CallbackQuery):
 # هندلر برای مدیریت ادمین‌ها
 @FileStream.on_callback_query(filters.regex("^(add_admin|admin_|perm_|make_owner)"))
 async def admin_management_handler(bot: Client, update: CallbackQuery):
-    # فقط صاحب ربات می‌تواند ادمین‌ها را مدیریت کند
-    if update.from_user.id != Telegram.OWNER_ID:
-        await update.answer("❌ فقط صاحب ربات می‌تواند ادمین‌ها را مدیریت کند.", show_alert=True)
+    # فقط ادمین‌ها می‌توانند ادمین‌ها را مدیریت کنند
+    if not is_admin(update.from_user.id):
+        await update.answer("❌ فقط ادمین‌ها می‌توانند ادمین‌ها را مدیریت کند.", show_alert=True)
         return
         
     data = update.data
@@ -637,7 +635,7 @@ async def sts(c: Client, m: Message):
         quote=True
     )
 
-@FileStream.on_message(filters.command("ban") & filters.private & filters.user(Telegram.OWNER_ID))
+@FileStream.on_message(filters.command("ban") & filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)))
 async def ban_handler(b, m: Message):
     id = m.text.split("/ban ")[-1]
     if not await db.is_user_banned(int(id)):
@@ -657,7 +655,7 @@ async def ban_handler(b, m: Message):
     else:
         await m.reply_text(text=f"`{id}`** قبلاً مسدود شده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
 
-@FileStream.on_message(filters.command("unban") & filters.private & filters.user(Telegram.OWNER_ID))
+@FileStream.on_message(filters.command("unban") & filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)))
 async def unban_handler(b, m: Message):
     id = m.text.split("/unban ")[-1]
     if await db.is_user_banned(int(id)):
@@ -676,12 +674,12 @@ async def unban_handler(b, m: Message):
     else:
         await m.reply_text(text=f"`{id}`** مسدود نشده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
 
-@FileStream.on_message(filters.command("broadcast") & filters.private & filters.user(Telegram.OWNER_ID) & filters.reply)
+@FileStream.on_message(filters.command("broadcast") & filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)) & filters.reply)
 async def broadcast_command_handler(c, m):
     """هندلر برای دستور /broadcast با ریپلای"""
     await start_broadcast(c, m, m.reply_to_message)
 
-@FileStream.on_message(filters.command("del") & filters.private & filters.user(Telegram.OWNER_ID))
+@FileStream.on_message(filters.command("del") & filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)))
 async def delete_handler(c: Client, m: Message):
     file_id = m.text.split(" ")[-1]
     try:
