@@ -4,7 +4,7 @@ from FileStream.bot import FileStream, multi_clients
 from FileStream.utils.bot_utils import (
     is_user_banned, is_user_exist, is_user_joined,
     gen_link, is_channel_banned, is_channel_exist,
-    is_user_authorized, seconds_to_hms  # ایمپورت تابع جدید
+    is_user_authorized, seconds_to_hms
 )
 from FileStream.utils.database import Database
 from FileStream.utils.file_properties import get_file_ids, get_file_info
@@ -13,6 +13,9 @@ from pyrogram import filters, Client
 from pyrogram.errors import FloodWait, MessageDeleteForbidden
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.enums.parse_mode import ParseMode
+
+# ایمپورت وضعیت ربات از admin
+from FileStream.bot.admin import is_bot_active
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 
@@ -31,6 +34,11 @@ db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
     group=4,
 )
 async def private_receive_handler(bot: Client, message: Message):
+    # چک کردن وضعیت ربات
+    if not is_bot_active() and message.from_user.id != Telegram.OWNER_ID:
+        await message.reply_text("❌ ربات در حال حاضر غیرفعال است. لطفاً بعداً تلاش کنید.")
+        return
+
     if not await is_user_authorized(message):
         return
     if await is_user_banned(message):
@@ -46,7 +54,7 @@ async def private_receive_handler(bot: Client, message: Message):
     # چک ضد تکرار
     is_repeat, remaining_repeat = await db.check_repeat(message.from_user.id, file_unique_id)
     if is_repeat:
-        remaining_readable = seconds_to_hms(remaining_repeat)  # استفاده از تابع جدید
+        remaining_readable = seconds_to_hms(remaining_repeat)
         await message.reply_text(
             f"این فایل هنوز معتبر است! لینک قبلی تا **{remaining_readable}** دیگر فعال است.",
             parse_mode=ParseMode.MARKDOWN,
@@ -57,7 +65,7 @@ async def private_receive_handler(bot: Client, message: Message):
     # چک ضد اسپم
     remaining_spam, is_spam = await db.check_spam(message.from_user.id)
     if is_spam:
-        remaining_readable = seconds_to_hms(int(remaining_spam))  # استفاده از تابع جدید
+        remaining_readable = seconds_to_hms(int(remaining_spam))
         await message.reply_text(
             f"اسپم نکنید! منتظر بمانید **{remaining_readable}**",
             parse_mode=ParseMode.MARKDOWN,
