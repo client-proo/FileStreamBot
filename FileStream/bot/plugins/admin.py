@@ -14,7 +14,7 @@ from FileStream.bot import FileStream
 from FileStream.server.exceptions import FIleNotFound
 from FileStream.config import Telegram, Server
 from pyrogram import filters, Client
-from pyrogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from pyrogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.enums.parse_mode import ParseMode
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
@@ -120,16 +120,32 @@ async def admin_message_handler(bot: Client, message: Message):
         )
     
     elif message.text == "⚙️ تنظیمات":
+        # ایجاد کیبورد اینلاین برای تنظیمات
+        settings_keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("عضویت اجباری🔒", callback_data="settings_force_sub"),
+                InlineKeyboardButton("ادمین ها👥", callback_data="settings_admins")
+            ],
+            [
+                InlineKeyboardButton("لیست کاربران👥", callback_data="settings_users_list"),
+                InlineKeyboardButton("لیست کاربران مسدود شده🚫", callback_data="settings_banned_list")
+            ],
+            [
+                InlineKeyboardButton("🔙 بازگشت", callback_data="settings_back")
+            ]
+        ])
+        
         settings_text = (
             "⚙️ **تنظیمات ربات**\n\n"
             f"⏰ زمان انقضای لینک‌ها: `{Telegram.EXPIRE_TIME} ثانیه`\n"
             f"🚫 زمان ضد اسپم: `{Telegram.ANTI_SPAM_TIME} ثانیه`\n"
             f"👥 کاربران مجاز: `{len(Telegram.AUTH_USERS) if Telegram.AUTH_USERS else 'همه'}`\n"
             f"📢 عضویت اجباری: `{'فعال' if Telegram.FORCE_SUB else 'غیرفعال'}`\n"
-            f"🔌 وضعیت ربات: `{'🟢 روشن' if bot_status else '🔴 خاموش'}`"
+            f"🔌 وضعیت ربات: `{'🟢 روشن' if bot_status else '🔴 خاموش'}`\n\n"
+            "**یکی از گزینه های زیر را انتخاب کنید👇👇**"
         )
         
-        await message.reply_text(settings_text, reply_markup=ADMIN_KEYBOARD)
+        await message.reply_text(settings_text, reply_markup=settings_keyboard)
     
     elif message.text == "🔴 خاموش/روشن کردن ربات":
         # تغییر وضعیت ربات
@@ -148,6 +164,30 @@ async def admin_message_handler(bot: Client, message: Message):
             del user_states[user_id]
         await message.reply_text(
             "🏠 به صفحه اصلی بازگشتید",
+            reply_markup=ADMIN_KEYBOARD
+        )
+
+# هندلر برای callback_query های تنظیمات
+@FileStream.on_callback_query(filters.regex("^settings_"))
+async def settings_callback_handler(bot: Client, update: CallbackQuery):
+    data = update.data
+    
+    if data == "settings_force_sub":
+        await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
+    
+    elif data == "settings_admins":
+        await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
+    
+    elif data == "settings_users_list":
+        await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
+    
+    elif data == "settings_banned_list":
+        await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
+    
+    elif data == "settings_back":
+        await update.message.edit_text(
+            "🏠 **صفحه اصلی**\n\n"
+            "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
             reply_markup=ADMIN_KEYBOARD
         )
 
