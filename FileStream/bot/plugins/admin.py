@@ -254,7 +254,7 @@ async def process_add_admin(bot: Client, message: Message):
         if target_user:
             # اضافه کردن کاربر به لیست ادمین‌ها
             admins_data[target_user.id] = {
-                'name': target_user.first_name,
+                'name': target_user.first_name or "بدون نام",
                 'username': target_user.username or 'ندارد',
                 'permissions': ['view_stats']  # دسترسی پیش‌فرض
             }
@@ -263,8 +263,18 @@ async def process_add_admin(bot: Client, message: Message):
             # حذف حالت
             del user_states[user_id]
             
+            # نمایش پیام موفقیت
+            success_text = (
+                f"✅ **ادمین با موفقیت اضافه شد!**\n\n"
+                f"👤 **نام:** {target_user.first_name or 'بدون نام'}\n"
+                f"🆔 **آیدی:** `{target_user.id}`\n"
+                f"📱 **یوزرنیم:** @{target_user.username or 'ندارد'}"
+            )
+            
+            await message.reply_text(success_text)
+            
             # نمایش لیست ادمین‌های به‌روز شده
-            await show_admins_list(bot, message)
+            await show_admins_list(bot, message=message)
             
     except Exception as e:
         await message.reply_text(f"❌ خطا در پردازش: {str(e)}")
@@ -273,7 +283,10 @@ async def show_admins_list(bot: Client, message: Message = None, callback_query:
     """نمایش لیست ادمین‌ها"""
     global admins_data
     
-    if not admins_data:
+    # فیلتر کردن صاحب ربات از لیست نمایش
+    display_admins = {k: v for k, v in admins_data.items() if k != Telegram.OWNER_ID}
+    
+    if not display_admins:
         admins_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("ادمینی ثبت نشده است", callback_data="N/A")],
             [InlineKeyboardButton("افزودن ادمین جدید➕", callback_data="add_admin")],
@@ -284,10 +297,7 @@ async def show_admins_list(bot: Client, message: Message = None, callback_query:
     else:
         # ایجاد کیبورد برای ادمین‌ها
         keyboard_buttons = []
-        for admin_id, admin_info in admins_data.items():
-            if admin_id == Telegram.OWNER_ID:
-                continue  # صاحب ربات را در لیست نشان نده
-                
+        for admin_id, admin_info in display_admins.items():
             button_text = f"{admin_id} | {admin_info['name']}"
             if len(button_text) > 30:
                 button_text = button_text[:27] + "..."
@@ -364,7 +374,7 @@ async def settings_callback_handler(bot: Client, update: CallbackQuery):
         )
 
 # هندلر برای مدیریت ادمین‌ها
-@FileStream.on_callback_query(filters.regex("^admin_"))
+@FileStream.on_callback_query(filters.regex("^(add_admin|admin_|perm_|make_owner)"))
 async def admin_management_handler(bot: Client, update: CallbackQuery):
     data = update.data
     
