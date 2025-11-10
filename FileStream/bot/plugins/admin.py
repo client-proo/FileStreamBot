@@ -176,10 +176,21 @@ async def settings_callback_handler(bot: Client, update: CallbackQuery):
         await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
     
     elif data == "settings_admins":
-        await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
+        # ایجاد کیبورد برای مدیریت ادمین‌ها
+        admins_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("ادمینی ثبت نشده است", callback_data="N/A")],
+            [InlineKeyboardButton("افزودن ادمین جدید➕", callback_data="add_admin")],
+            [InlineKeyboardButton("🔙 بازگشت", callback_data="settings_back")]
+        ])
+        
+        await update.message.edit_text(
+            "**لیست ادمین های ثبت شده در ربات👇👇**\n\n"
+            "در حال حاضر هیچ ادمینی ثبت نشده است.",
+            reply_markup=admins_keyboard
+        )
     
     elif data == "settings_users_list":
-        await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
+        await update.answer("🔄 این قابلیت به زونی اضافه خواهد شد", show_alert=True)
     
     elif data == "settings_banned_list":
         await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
@@ -190,6 +201,11 @@ async def settings_callback_handler(bot: Client, update: CallbackQuery):
             "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
             reply_markup=ADMIN_KEYBOARD
         )
+
+# هندلر برای افزودن ادمین جدید
+@FileStream.on_callback_query(filters.regex("^add_admin$"))
+async def add_admin_handler(bot: Client, update: CallbackQuery):
+    await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
 
 async def start_broadcast(bot: Client, message: Message, broadcast_msg: Message):
     user_id = message.from_user.id
