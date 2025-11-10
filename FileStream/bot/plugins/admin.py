@@ -6,7 +6,6 @@ import asyncio
 import aiofiles
 import datetime
 import logging
-import pytz
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, CallbackQuery
 
 from FileStream.utils.broadcast_helper import send_msg
@@ -23,94 +22,11 @@ logger = logging.getLogger(__name__)
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 broadcast_ids = {}
 
-# تنظیم منطقه زمانی تهران
-tehran_tz = pytz.timezone('Asia/Tehran')
-
-def get_tehran_time():
-    """دریافت زمان فعلی تهران"""
-    return datetime.datetime.now(tehran_tz)
-
-def get_jalali_datetime():
-    """دریافت تاریخ و زمان شمسی تهران"""
-    try:
-        import jdatetime
-        tehran_time = get_tehran_time()
-        jalali_date = jdatetime.datetime.fromgregorian(
-            year=tehran_time.year,
-            month=tehran_time.month,
-            day=tehran_time.day,
-            hour=tehran_time.hour,
-            minute=tehran_time.minute,
-            second=tehran_time.second
-        )
-        return jalali_date.strftime('%Y/%m/%d - %H:%M:%S')
-    except ImportError:
-        # اگر jdatetime نصب نبود، از تاریخ میلادی استفاده کن
-        return get_tehran_time().strftime('%Y-%m-%d %H:%M:%S')
-
-def convert_to_jalali(timestamp):
-    """تبدیل timestamp به تاریخ شمسی تهران"""
-    try:
-        import jdatetime
-        if not timestamp:
-            return "نامشخص"
-        
-        gregorian_date = datetime.datetime.fromtimestamp(timestamp, tehran_tz)
-        jalali_date = jdatetime.datetime.fromgregorian(datetime=gregorian_date)
-        return jalali_date.strftime('%Y/%m/%d - %H:%M:%S')
-    except ImportError:
-        # اگر jdatetime نصب نبود، از تاریخ میلادی استفاده کن
-        if timestamp:
-            return datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-        return "نامشخص"
-
-def get_time_ago(timestamp: float) -> str:
-    """تبدیل timestamp به زمان گذشته"""
-    if not timestamp:
-        return "نامشخص"
-        
-    now = time.time()
-    diff = now - timestamp
-    
-    if diff < 60:
-        return "همین الان"
-    elif diff < 3600:
-        return f"{int(diff // 60)} دقیقه قبل"
-    elif diff < 86400:
-        return f"{int(diff // 3600)} ساعت قبل"
-    elif diff < 2592000:
-        return f"{int(diff // 86400)} روز قبل"
-    else:
-        return f"{int(diff // 2592000)} ماه قبل"
-
-def format_user_info(user_data):
-    """فرمت‌دهی اطلاعات کاربر"""
-    user_id = user_data['id']
-    username = user_data.get('username', 'ندارد')
-    first_name = user_data.get('first_name', '')
-    last_name = user_data.get('last_name', '')
-    
-    # ساخت نام کامل
-    full_name = f"{first_name} {last_name}".strip()
-    if not full_name:
-        full_name = "نامشخص"
-    
-    # ساخت لینک کاربر
-    if username and username != 'ندارد':
-        user_link = f"@{username}"
-    else:
-        user_link = f"[لینک کاربر](tg://user?id={user_id})"
-    
-    return full_name, user_link, username
-
 @FileStream.on_message(filters.command("status") & filters.private & filters.user(Telegram.OWNER_ID))
 async def sts(c: Client, m: Message):
-    current_date = get_jalali_datetime()
-    
     await m.reply_text(text=f"""**👥 کل کاربران:** `{await db.total_users_count()}`
 **🚫 کاربران مسدود شده:** `{await db.total_banned_users_count()}`
-**🔗 لینک‌های تولید شده:** `{await db.total_files()}`
-**🗓️ تاریخ:** `{current_date}`"""
+**🔗 لینک‌های تولید شده: ** `{await db.total_files()}`"""
                        , parse_mode=ParseMode.MARKDOWN, quote=True)
 
 
@@ -158,13 +74,18 @@ async def sts(b, m: Message):
 @FileStream.on_message(filters.command("broadcast") & filters.private & filters.user(Telegram.OWNER_ID) & filters.reply)
 async def broadcast_handler(c: Client, m: Message):
     """
-    هندلر ارسال پیام همگانی
+    هندلر ارسال پیام همگانی - نسخه کاملاً اصلاح شده
     """
     try:
+        # بررسی ریپلای
         if not m.reply_to_message:
-            await m.reply_text("❌ لطفاً به پیامی که می‌خواهید ارسال کنید ریپلای کنید.", quote=True)
+            await m.reply_text(
+                "❌ لطفاً به پیامی که می‌خواهید ارسال کنید ریپلای کنید.",
+                quote=True
+            )
             return
 
+        # دریافت تمام کاربران
         all_users = await db.get_all_users()
         broadcast_msg = m.reply_to_message
         total_users = await db.total_users_count()
@@ -173,56 +94,152 @@ async def broadcast_handler(c: Client, m: Message):
             await m.reply_text("❌ هیچ کاربری در دیتابیس وجود ندارد.", quote=True)
             return
 
-        progress_msg = await m.reply_text("🔄 شروع ارسال همگانی...", quote=True)
+        # تولید ID یکتا برای broadcast
+        broadcast_id = ''.join([random.choice(string.ascii_letters) for i in range(8)])
+        
+        # پیام شروع
+        progress_msg = await m.reply_text(
+            "🔄 **در حال شروع ارسال همگانی...**\n\n"
+            f"👥 کاربران: {total_users}\n"
+            "⏳ در حال آماده‌سازی...",
+            quote=True
+        )
 
         start_time = time.time()
         done = 0
         failed = 0
         success = 0
         
-        async for user in all_users:
-            try:
-                user_id = int(user['id'])
-                
-                if done > 0:
-                    await asyncio.sleep(0.2)
-                
-                status, error_msg = await send_msg(user_id=user_id, message=broadcast_msg)
-                
-                if status == 200:
-                    success += 1
-                else:
-                    failed += 1
-                    if status == 400:
-                        await db.delete_user(user_id)
-                
-                done += 1
-                
-                if done % 5 == 0:
-                    await progress_msg.edit_text(f"📤 ارسال شده: {done}/{total_users}\n✅ موفق: {success}\n❌ ناموفق: {failed}")
+        # فایل لاگ
+        log_filename = f'broadcast_{broadcast_id}.txt'
+        
+        async with aiofiles.open(log_filename, 'w', encoding='utf-8') as log_file:
+            await log_file.write(f"Broadcast Log - {datetime.datetime.now()}\n")
+            await log_file.write(f"Total Users: {total_users}\n")
+            await log_file.write("=" * 50 + "\n\n")
+            
+            # ارسال به کاربران
+            async for user in all_users:
+                try:
+                    user_id = int(user['id'])
+                    
+                    # تاخیر برای جلوگیری از FloodWait (افزایش به 200ms)
+                    if done > 0:  # فقط بعد از کاربر اول تاخیر داشته باش
+                        await asyncio.sleep(0.2)
+                    
+                    # ارسال پیام
+                    status, error_msg = await send_msg(user_id=user_id, message=broadcast_msg)
+                    
+                    # بررسی نتیجه ارسال
+                    if status == 200:
+                        success += 1
+                        print(f"✅ ارسال شد به {user_id}")
+                    else:
+                        failed += 1
+                        if error_msg:
+                            await log_file.write(error_msg)
+                        print(f"❌ خطا برای {user_id}: {error_msg}")
                         
-            except Exception as e:
-                failed += 1
-                continue
+                        # حذف کاربر اگر غیرفعال است
+                        if status == 400:
+                            try:
+                                await db.delete_user(user_id)
+                                await log_file.write(f"{user_id} : حذف شد از دیتابیس\n")
+                            except Exception as delete_error:
+                                await log_file.write(f"{user_id} : خطا در حذف: {delete_error}\n")
+                    
+                    done += 1
+                    
+                    # بروزرسانی پیشرفت هر 5 کاربر
+                    if done % 5 == 0 or done == total_users:
+                        elapsed = time.time() - start_time
+                        progress_text = await generate_progress_text(done, total_users, success, failed, elapsed)
+                        
+                        try:
+                            await progress_msg.edit_text(progress_text)
+                        except Exception as edit_error:
+                            print(f"خطا در بروزرسانی پیشرفت: {edit_error}")
+                            
+                except Exception as e:
+                    failed += 1
+                    error_text = f"{user.get('id', 'Unknown')} : خطای عمومی: {str(e)}\n"
+                    await log_file.write(error_text)
+                    print(f"خطای عمومی برای کاربر: {e}")
+                    continue
 
+        # محاسبه زمان کل
         total_time = datetime.timedelta(seconds=int(time.time() - start_time))
         
-        await progress_msg.delete()
+        # گزارش نهایی
+        final_report = await generate_final_report(total_users, done, success, failed, total_time)
         
-        final_report = f"""✅ **ارسال همگانی تکمیل شد!**
+        # حذف پیام پیشرفت
+        try:
+            await progress_msg.delete()
+        except Exception:
+            pass
 
-👥 کاربران کل: {total_users}
-📤 ارسال شده: {done}
-✅ موفق: {success}
-❌ ناموفق: {failed}
-⏱️ زمان کل: {total_time}
-🗓️ تاریخ: {get_jalali_datetime()}"""
-
-        await m.reply_text(final_report, quote=True)
+        # ارسال گزارش نهایی
+        if failed == 0:
+            await m.reply_text(final_report, quote=True)
+            # حذف فایل لاگ اگر خطایی نبود
+            try:
+                os.remove(log_filename)
+            except Exception:
+                pass
+        else:
+            await m.reply_document(
+                document=log_filename,
+                caption=final_report,
+                quote=True
+            )
+            # حذف فایل لاگ پس از 30 ثانیه
+            await asyncio.sleep(30)
+            try:
+                os.remove(log_filename)
+            except Exception:
+                pass
 
     except Exception as e:
         logger.error(f"خطای کلی در broadcast: {e}")
-        await m.reply_text(f"❌ خطا در ارسال همگانی: {e}", quote=True)
+        await m.reply_text(
+            f"❌ **خطای سیستمی در ارسال همگانی:**\n`{str(e)}`",
+            quote=True
+        )
+
+
+async def generate_progress_text(done, total, success, failed, elapsed_time):
+    """تولید متن پیشرفت"""
+    progress_percent = (done / total) * 100
+    elapsed_str = str(datetime.timedelta(seconds=int(elapsed_time)))
+    speed = done / elapsed_time if elapsed_time > 0 else 0
+    
+    return f"""🔄 **در حال ارسال همگانی...**
+
+📊 **پیشرفت:** {done}/{total} ({progress_percent:.1f}%)
+✅ **موفق:** {success}
+❌ **ناموفق:** {failed}
+⏱️ **زمان:** {elapsed_str}
+🚀 **سرعت:** {speed:.1f} کاربر/ثانیه
+
+لطفاً شکیبا باشید..."""
+
+
+async def generate_final_report(total_users, done, success, failed, total_time):
+    """تولید گزارش نهایی"""
+    success_rate = (success / total_users) * 100 if total_users > 0 else 0
+    
+    return f"""✅ **ارسال همگانی تکمیل شد!**
+
+📈 **گزارش نهایی:**
+├ 👥 کاربران کل: {total_users}
+├ 📤 ارسال شده: {done}
+├ ✅ موفق: {success}
+├ ❌ ناموفق: {failed}
+├ ⏱️ زمان کل: {total_time}
+└ 📊 نرخ موفقیت: {success_rate:.1f}%
+
+{"🎉 ارسال با موفقیت کامل شد!" if failed == 0 else "⚠️ برخی پیام‌ها ارسال نشدند. فایل لاگ ضمیمه شده است."}"""
 
 
 @FileStream.on_message(filters.command("del") & filters.private & filters.user(Telegram.OWNER_ID))
@@ -231,19 +248,26 @@ async def sts(c: Client, m: Message):
     try:
         file_info = await db.get_file(file_id)
     except FIleNotFound:
-        await m.reply_text(text=f"**فایل قبلاً حذف شده است**", quote=True)
+        await m.reply_text(
+            text=f"**فایل قبلاً حذف شده است**",
+            quote=True
+        )
         return
     await db.delete_one_file(file_info['_id'])
     await db.count_links(file_info['user_id'], "-")
-    await m.reply_text(text=f"**فایل با موفقیت حذف شد !** ", quote=True)
+    await m.reply_text(
+        text=f"**فایل با موفقیت حذف شد !** ",
+        quote=True
+    )
 
 
-# ==================== دستورات مدیریت کاربران ====================
+# ==================== دستور مشاهده کاربران ====================
 
 @FileStream.on_message(filters.command("users") & filters.private & filters.user(Telegram.OWNER_ID))
 async def show_users(c: Client, m: Message):
-    """نمایش لیست کاربران با اطلاعات کامل"""
+    """نمایش لیست کاربران با جزئیات کامل"""
     try:
+        # دریافت تمام کاربران
         all_users = await db.get_all_users()
         total_users = await db.total_users_count()
         
@@ -251,12 +275,15 @@ async def show_users(c: Client, m: Message):
             await m.reply_text("❌ هیچ کاربری در دیتابیس وجود ندارد.", quote=True)
             return
 
+        # تبدیل به لیست
         users_list = []
         async for user in all_users:
             users_list.append(user)
         
+        # مرتب سازی بر اساس تاریخ عضویت (جدیدترین اول)
         users_list.sort(key=lambda x: x.get('join_date', 0), reverse=True)
         
+        # نمایش صفحه اول
         await show_users_page(c, m, users_list, 1, total_users)
         
     except Exception as e:
@@ -265,44 +292,49 @@ async def show_users(c: Client, m: Message):
 
 
 async def show_users_page(c: Client, m: Message, users_list: list, page: int, total_users: int):
-    """نمایش یک صفحه از کاربران با اطلاعات کامل"""
+    """نمایش یک صفحه از کاربران"""
     try:
-        users_per_page = 8  # کاهش به 8 کاربر در صفحه به دلیل اطلاعات بیشتر
+        users_per_page = 10
         start_idx = (page - 1) * users_per_page
         end_idx = start_idx + users_per_page
         page_users = users_list[start_idx:end_idx]
         
         total_pages = (total_users + users_per_page - 1) // users_per_page
         
+        # ایجاد متن صفحه
         text = f"**👥 لیست کاربران ربات**\n\n"
         text += f"📊 **آمار کلی:**\n"
         text += f"├ 👤 کاربران کل: `{total_users}`\n"
         text += f"├ 📄 صفحه: `{page}/{total_pages}`\n"
-        text += f"└ 🗓️ تاریخ: `{get_jalali_datetime()}`\n\n"
+        text += f"└ 🗓️ تاریخ: `{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`\n\n"
         text += "**━━━━━━━━━━━━━━━━━━━━**\n\n"
         
+        # افزودن اطلاعات هر کاربر
         for i, user in enumerate(page_users, start=start_idx + 1):
             user_id = user['id']
             join_date = user.get('join_date', 0)
             links_count = user.get('Links', 0)
             
-            # فرمت‌دهی اطلاعات کاربر
-            full_name, user_link, username = format_user_info(user)
-            join_date_str = convert_to_jalali(join_date)
+            # تبدیل تاریخ
+            if join_date:
+                join_date_str = datetime.datetime.fromtimestamp(join_date).strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                join_date_str = "نامشخص"
             
+            # بررسی وضعیت بن
             is_banned = await db.is_user_banned(user_id)
             status = "🚫 مسدود" if is_banned else "✅ فعال"
             
-            text += f"**{i}. {full_name}**\n"
-            text += f"   ├ 🆔 آیدی: `{user_id}`\n"
-            text += f"   ├ 📧 یوزرنیم: {user_link}\n"
-            text += f"   ├ 📅 عضویت: `{join_date_str}`\n"
-            text += f"   ├ 🔗 فایل‌ها: `{links_count}`\n"
+            text += f"**{i}. کاربر 🆔 `{user_id}`**\n"
+            text += f"   ├ 📅 تاریخ عضویت: `{join_date_str}`\n"
+            text += f"   ├ 🔗 فایل‌های آپلود شده: `{links_count}`\n"
             text += f"   └ 🎯 وضعیت: {status}\n\n"
             
+            # اگر کاربر آخر صفحه نیست، خط جداکننده اضافه کن
             if i < min(end_idx, total_users):
                 text += "───\n\n"
         
+        # ایجاد دکمه‌های صفحه‌بندی
         buttons = []
         if page > 1:
             buttons.append(InlineKeyboardButton("◀️ صفحه قبلی", callback_data=f"users_{page-1}"))
@@ -316,6 +348,7 @@ async def show_users_page(c: Client, m: Message, users_list: list, page: int, to
         if buttons:
             keyboard.append(buttons)
         
+        # دکمه‌های اضافی
         keyboard.append([
             InlineKeyboardButton("🔄 بروزرسانی", callback_data="users_refresh"),
             InlineKeyboardButton("📊 آمار کامل", callback_data="users_stats")
@@ -339,10 +372,14 @@ async def show_users_page(c: Client, m: Message, users_list: list, page: int, to
 
 @FileStream.on_message(filters.command("userinfo") & filters.private & filters.user(Telegram.OWNER_ID))
 async def user_info(c: Client, m: Message):
-    """نمایش اطلاعات کامل یک کاربر"""
+    """نمایش اطلاعات کامل یک کاربر خاص"""
     try:
         if len(m.command) < 2:
-            await m.reply_text("❌ لطفاً آیدی کاربر را وارد کنید:\nمثال: `/userinfo 123456789`", quote=True)
+            await m.reply_text(
+                "❌ لطفاً آیدی کاربر را وارد کنید:\n"
+                "مثال: `/userinfo 123456789`",
+                quote=True
+            )
             return
         
         user_id = int(m.command[1])
@@ -352,23 +389,30 @@ async def user_info(c: Client, m: Message):
             await m.reply_text(f"❌ کاربر با آیدی `{user_id}` پیدا نشد.", quote=True)
             return
         
+        # دریافت اطلاعات کامل کاربر
         join_date = user.get('join_date', 0)
         links_count = user.get('Links', 0)
         last_send_time = user.get('last_send_time', 0)
         is_banned = await db.is_user_banned(user_id)
         
-        # فرمت‌دهی اطلاعات کاربر
-        full_name, user_link, username = format_user_info(user)
-        join_date_str = convert_to_jalali(join_date)
-        last_active_str = convert_to_jalali(last_send_time) if last_send_time else "هرگز"
+        # تبدیل تاریخ‌ها
+        if join_date:
+            join_date_str = datetime.datetime.fromtimestamp(join_date).strftime('%Y-%m-%d %H:%M:%S')
+            join_ago = await get_time_ago(join_date)
+        else:
+            join_date_str = "نامشخص"
+            join_ago = "نامشخص"
         
-        join_ago = get_time_ago(join_date)
-        last_active_ago = get_time_ago(last_send_time) if last_send_time else "فعالیت نداشته"
+        if last_send_time:
+            last_active_str = datetime.datetime.fromtimestamp(last_send_time).strftime('%Y-%m-%d %H:%M:%S')
+            last_active_ago = await get_time_ago(last_send_time)
+        else:
+            last_active_str = "هرگز"
+            last_active_ago = "فعالیت نداشته"
         
+        # ایجاد متن اطلاعات کاربر
         text = f"**👤 اطلاعات کامل کاربر**\n\n"
-        text += f"**👤 نام کامل:** `{full_name}`\n"
         text += f"**🆔 آیدی کاربر:** `{user_id}`\n"
-        text += f"**📧 یوزرنیم:** {user_link}\n"
         text += f"**🎯 وضعیت:** {'🚫 مسدود' if is_banned else '✅ فعال'}\n\n"
         
         text += f"**📅 تاریخ عضویت:**\n"
@@ -379,8 +423,6 @@ async def user_info(c: Client, m: Message):
         text += f"├ 🔗 فایل‌های آپلود شده: `{links_count}`\n"
         text += f"├ 📍 آخرین فعالیت: `{last_active_str}`\n"
         text += f"└ 🕒 زمان گذشته: `{last_active_ago}`\n\n"
-        
-        text += f"**🗓️ تاریخ گزارش:** `{get_jalali_datetime()}`"
         
         # دکمه‌های مدیریت کاربر
         keyboard = [
@@ -414,35 +456,48 @@ async def user_info(c: Client, m: Message):
         await m.reply_text(f"❌ خطا در دریافت اطلاعات: {e}", quote=True)
 
 
+async def get_time_ago(timestamp: float) -> str:
+    """تبدیل timestamp به زمان گذشته"""
+    now = time.time()
+    diff = now - timestamp
+    
+    if diff < 60:
+        return "همین الان"
+    elif diff < 3600:
+        return f"{int(diff // 60)} دقیقه قبل"
+    elif diff < 86400:
+        return f"{int(diff // 3600)} ساعت قبل"
+    elif diff < 2592000:
+        return f"{int(diff // 86400)} روز قبل"
+    else:
+        return f"{int(diff // 2592000)} ماه قبل"
+
+
+# ==================== مدیریت callback کاربران ====================
+
 @FileStream.on_callback_query(filters.regex(r"^users_"))
 async def users_callback_handler(c: Client, query: CallbackQuery):
-    """مدیریت callbackهای کاربران"""
+    """مدیریت callbackهای مربوط به کاربران"""
     try:
         data = query.data
         
         if data == "users_refresh":
+            # بروزرسانی لیست
             await show_users(c, query.message)
             await query.answer("✅ لیست بروزرسانی شد")
             
         elif data == "users_stats":
+            # نمایش آمار کامل
             total_users = await db.total_users_count()
             banned_count = await db.total_banned_users_count()
             active_count = total_users - banned_count
-            
-            # محاسبه کاربران با یوزرنیم
-            all_users = await db.get_all_users()
-            users_with_username = 0
-            async for user in all_users:
-                if user.get('username') and user.get('username') != 'ندارد':
-                    users_with_username += 1
             
             stats_text = f"**📊 آمار کامل کاربران**\n\n"
             stats_text += f"👥 کاربران کل: `{total_users}`\n"
             stats_text += f"✅ کاربران فعال: `{active_count}`\n"
             stats_text += f"🚫 کاربران مسدود: `{banned_count}`\n"
-            stats_text += f"📧 کاربران با یوزرنیم: `{users_with_username}`\n"
             stats_text += f"📈 درصد فعال: `{(active_count/total_users)*100:.1f}%`\n\n"
-            stats_text += f"🗓️ **تاریخ:** `{get_jalali_datetime()}`"
+            stats_text += f"🗓️ تاریخ: `{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`"
             
             await query.message.edit_text(
                 text=stats_text,
@@ -455,75 +510,88 @@ async def users_callback_handler(c: Client, query: CallbackQuery):
             await query.answer()
             
         elif data == "users_back":
+            # بازگشت به لیست
             await show_users(c, query.message)
             await query.answer()
             
         elif data == "users_close":
+            # بستن
             await query.message.delete()
             await query.answer()
             
         elif data.startswith("users_"):
-            try:
-                page = int(data.split("_")[1])
-                all_users = await db.get_all_users()
-                users_list = []
-                async for user in all_users:
-                    users_list.append(user)
-                users_list.sort(key=lambda x: x.get('join_date', 0), reverse=True)
-                total_users = await db.total_users_count()
-                
-                await show_users_page(c, query.message, users_list, page, total_users)
-                await query.answer()
-            except:
-                await query.answer("❌ خطا در تغییر صفحه", show_alert=True)
+            # تغییر صفحه
+            page = int(data.split("_")[1])
+            all_users = await db.get_all_users()
+            users_list = []
+            async for user in all_users:
+                users_list.append(user)
+            users_list.sort(key=lambda x: x.get('join_date', 0), reverse=True)
+            total_users = await db.total_users_count()
+            
+            await show_users_page(c, query.message, users_list, page, total_users)
+            await query.answer()
             
     except Exception as e:
         logger.error(f"خطا در مدیریت callback کاربران: {e}")
         await query.answer("❌ خطا در پردازش درخواست", show_alert=True)
 
 
+# دستور تست broadcast
+@FileStream.on_message(filters.command("test_broadcast") & filters.private & filters.user(Telegram.OWNER_ID))
+async def test_broadcast(c: Client, m: Message):
+    """تست ارسال همگانی با پیام تست"""
+    try:
+        # ایجاد پیام تست
+        test_message = await m.reply_text(
+            "🧪 **این یک پیام تست برای broadcast است**\n\n"
+            "تاریخ: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            quote=True
+        )
+        
+        # استفاده از هندلر broadcast اصلی
+        m.reply_to_message = test_message
+        await broadcast_handler(c, m)
+        
+    except Exception as e:
+        await m.reply_text(f"❌ خطا در تست: {e}", quote=True)
+
+
+# دستور مشاهده آمار کاربران
 @FileStream.on_message(filters.command("user_stats") & filters.private & filters.user(Telegram.OWNER_ID))
 async def user_stats(c: Client, m: Message):
-    """نمایش آمار کاربران"""
+    """نمایش آمار دقیق کاربران"""
     try:
         total_users = await db.total_users_count()
         banned_users = await db.total_banned_users_count()
         active_users = total_users - banned_users
         
-        # محاسبه کاربران با یوزرنیم
-        all_users = await db.get_all_users()
-        users_with_username = 0
+        # نمونه‌گیری از کاربران اخیر
         recent_users = []
+        all_users = await db.get_all_users()
         count = 0
-        
         async for user in all_users:
-            if user.get('username') and user.get('username') != 'ندارد':
-                users_with_username += 1
-            
-            if count < 5:
+            if count < 5:  # فقط 5 کاربر آخر
                 recent_users.append(user)
                 count += 1
+            else:
+                break
         
         stats_text = f"""📊 **آمار دقیق کاربران**
 
 👥 **کاربران کل:** `{total_users}`
 ✅ **کاربران فعال:** `{active_users}`
 🚫 **کاربران مسدود:** `{banned_users}`
-📧 **کاربران با یوزرنیم:** `{users_with_username}`
 
 **کاربران اخیر:**
 """
         
         for user in recent_users:
             user_id = user['id']
-            full_name, user_link, username = format_user_info(user)
-            join_date_str = convert_to_jalali(user.get('join_date', time.time()))
-            
-            stats_text += f"├ 👤 {full_name}\n"
-            stats_text += f"│  ├ 🆔 `{user_id}`\n"
-            stats_text += f"│  └ {user_link} - {join_date_str}\n"
+            join_date = datetime.datetime.fromtimestamp(user.get('join_date', time.time()))
+            stats_text += f"├ 👤 `{user_id}` - {join_date.strftime('%Y-%m-%d')}\n"
         
-        stats_text += f"\n🗓️ **تاریخ گزارش:** `{get_jalali_datetime()}`"
+        stats_text += f"\n📈 **برای تست broadcast از دستور /test_broadcast استفاده کنید**"
         
         await m.reply_text(stats_text, quote=True)
         
