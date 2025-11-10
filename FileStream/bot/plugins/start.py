@@ -36,7 +36,7 @@ async def start(bot: Client, message: Message):
     if message.from_user.id == Telegram.OWNER_ID:
         if usr_cmd == "/start":
             await message.reply_text(
-                text="🛠 **به پنل مدیریت خوش آمدید!**\n\n"
+                text="🏠 **صفحه اصلی**\n\n"
                      "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
                 reply_markup=ADMIN_KEYBOARD
             )
@@ -194,9 +194,9 @@ async def my_files(bot: Client, message: Message):
     if total_files > 10:
         file_list.append(
             [
-                InlineKeyboardButton("◄", callback_data="N/A"),
+                InlineKeyboardButton("◄", callback_data="{}".format("userfiles_"+str(1-1) if 1 > 1 else 'N/A')),
                 InlineKeyboardButton(f"1/{math.ceil(total_files / 10)}", callback_data="N/A"),
-                InlineKeyboardButton("►", callback_data="userfiles_2")
+                InlineKeyboardButton("►", callback_data="{}".format("userfiles_"+str(1+1) if total_files > 1*10 else 'N/A'))
             ],
         )
     if not file_list:
