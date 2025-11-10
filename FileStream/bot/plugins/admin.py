@@ -235,11 +235,6 @@ async def admin_message_handler(bot: Client, message: Message):
         )
     
     elif message.text == "⚙️ تنظیمات":
-        # چک دسترسی تغییر تنظیمات
-        if not has_permission(user_id, 'change_settings'):
-            await message.reply_text("❌ شما دسترسی به تنظیمات را ندارید.")
-            return
-            
         # ایجاد کیبورد اینلاین برای تنظیمات
         settings_keyboard = InlineKeyboardMarkup([
             [
