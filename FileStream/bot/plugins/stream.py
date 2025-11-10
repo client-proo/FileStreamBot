@@ -14,7 +14,7 @@ from pyrogram.errors import FloodWait, MessageDeleteForbidden
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.enums.parse_mode import ParseMode
 
-# ایمپورت وضعیت ربات از admin
+# ایمپورت وضعیت ربات از admin در پوشه plugins
 from FileStream.bot.plugins.admin import is_bot_active
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
@@ -34,9 +34,14 @@ db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
     group=4,
 )
 async def private_receive_handler(bot: Client, message: Message):
+    # اگر کاربر ادمین نیست، اجازه آپلود نده
+    if message.from_user.id != Telegram.OWNER_ID:
+        await message.reply_text("❌ دسترسی denied. این ربات در حال حاضر فقط برای ادمین قابل استفاده است.")
+        return
+
     # چک کردن وضعیت ربات
-    if not is_bot_active() and message.from_user.id != Telegram.OWNER_ID:
-        await message.reply_text("❌ ربات در حال حاضر غیرفعال است. لطفاً بعداً تلاش کنید.")
+    if not is_bot_active():
+        await message.reply_text("❌ ربات در حال حاضر غیرفعال است.")
         return
 
     if not await is_user_authorized(message):
@@ -123,7 +128,6 @@ async def private_receive_handler(bot: Client, message: Message):
                 print(f"Cleaned up incomplete file {inserted_id}")
             except Exception as cleanup_error:
                 print(f"Cleanup failed: {cleanup_error}")
-
 
 # ====================== AUTO DELETE + DB CLEANUP + EXPIRED MESSAGE ======================
 async def delete_after_expire(reply_msg: Message, original_msg: Message, user_id: int, file_id: int, delay: float):
