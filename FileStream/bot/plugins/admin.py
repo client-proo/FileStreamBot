@@ -85,7 +85,7 @@ async def admin_buttons_handler(bot: Client, message: Message):
         await message.reply_text(settings_text, reply_markup=ADMIN_KEYBOARD)
     
     elif message.text == "🔴 خاموش/روشن کردن ربات":
-        global bot_status
+        
         bot_status = not bot_status
         
         if bot_status:
