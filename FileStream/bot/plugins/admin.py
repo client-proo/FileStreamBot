@@ -138,7 +138,7 @@ async def admin_message_handler(bot: Client, message: Message):
 
     # اگر کاربر در حالت افزودن ادمین است
     if user_id in user_states and user_states[user_id] == "adding_admin":
-        if message.text == "/cancel":
+        if message.text and message.text == "/cancel":
             del user_states[user_id]
             await message.reply_text(
                 "❌ عملیات افزودن ادمین لغو شد.",
@@ -235,24 +235,39 @@ async def process_add_admin(bot: Client, message: Message):
         # بررسی اگر پیام فوروارد شده است
         if message.forward_from:
             target_user = message.forward_from
+            print(f"Found user from forward: {target_user.id} - {target_user.first_name}")
         # بررسی اگر یوزرنیم ارسال شده
-        elif message.text.startswith('@'):
+        elif message.text and message.text.startswith('@'):
             username = message.text[1:].strip()
+            print(f"Looking up username: {username}")
             try:
                 target_user = await bot.get_users(username)
+                print(f"Found user by username: {target_user.id} - {target_user.first_name}")
             except Exception as e:
+                print(f"Error looking up username: {e}")
                 await message.reply_text("❌ کاربری با این یوزرنیم یافت نشد.")
                 return
         # بررسی اگر آیدی عددی ارسال شده
-        elif message.text.isdigit():
-            user_id_int = int(message.text)
+        elif message.text and message.text.strip().replace(' ', '').isdigit():
+            user_id_str = message.text.strip().replace(' ', '')
+            user_id_int = int(user_id_str)
+            print(f"Looking up user ID: {user_id_int}")
             try:
                 target_user = await bot.get_users(user_id_int)
+                print(f"Found user by ID: {target_user.id} - {target_user.first_name}")
             except Exception as e:
+                print(f"Error looking up user ID: {e}")
                 await message.reply_text("❌ کاربری با این آیدی یافت نشد.")
                 return
         else:
-            await message.reply_text("❌ لطفاً یک روش معتبر برای افزودن ادمین استفاده کنید.")
+            print(f"No valid method detected. Text: '{message.text}', Forward: {message.forward_from}")
+            await message.reply_text(
+                "❌ لطفاً یک روش معتبر برای افزودن ادمین استفاده کنید:\n\n"
+                "• یک پیام از کاربر مورد نظر فوروارد کنید\n"
+                "• یوزرنیم کاربر را با @ ارسال کنید\n" 
+                "• آیدی عددی کاربر را ارسال کنید\n\n"
+                "برای لغو /cancel را بزنید."
+            )
             return
         
         if target_user:
@@ -280,6 +295,7 @@ async def process_add_admin(bot: Client, message: Message):
             await show_admins_list(bot, message=message)
             
     except Exception as e:
+        print(f"Error in process_add_admin: {e}")
         await message.reply_text(f"❌ خطا در پردازش: {str(e)}")
 
 async def show_admins_list(bot: Client, message: Message = None, callback_query: CallbackQuery = None):
@@ -419,18 +435,18 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
             await update.message.edit_text(
                 "➕ **افزودن ادمین جدید**\n\n"
                 "برای افزودن ادمین، یکی از روش‌های زیر را استفاده کنید:\n"
-                "- یک پیام از کاربر مورد نظر فوروارد کنید.\n"
-                "- یوزرنیم کاربر را با @ ارسال کنید.\n"
-                "- آیدی عددی کاربر را ارسال کنید.\n\n"
+                "- یک پیام از کاربر مورد نظر فوروارد کنید\n"
+                "- یوزرنیم کاربر را با @ ارسال کنید\n" 
+                "- آیدی عددی کاربر را ارسال کنید\n\n"
                 "برای لغو /cancel را بزنید."
             )
         except Exception as e:
             await update.message.reply_text(
                 "➕ **افزودن ادمین جدید**\n\n"
                 "برای افزودن ادمین، یکی از روش‌های زیر را استفاده کنید:\n"
-                "- یک پیام از کاربر مورد نظر فوروارد کنید.\n"
-                "- یوزرنیم کاربر را با @ ارسال کنید.\n"
-                "- آیدی عددی کاربر را ارسال کنید.\n\n"
+                "- یک پیام از کاربر مورد نظر فوروارد کنید\n"
+                "- یوزرنیم کاربر را با @ ارسال کنید\n"
+                "- آیدی عددی کاربر را ارسال کنید\n\n"
                 "برای لغو /cancel را بزنید."
             )
     
