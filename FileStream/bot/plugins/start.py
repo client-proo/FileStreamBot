@@ -15,13 +15,24 @@ import asyncio
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 
-# ایمپورت کیبورد ادمین از admin.py
-from FileStream.bot.plugins.admin import ADMIN_KEYBOARD
+# ایمپورت کیبورد ادمین از admin.py در پوشه plugins
+from FileStream.bot.plugins.admin import ADMIN_KEYBOARD, is_bot_active
 
 @FileStream.on_message(filters.command('start') & filters.private)
 async def start(bot: Client, message: Message):
+    # اگر کاربر ادمین نیست و ربات خاموش است، هیچ کاری نکن
+    if message.from_user.id != Telegram.OWNER_ID and not is_bot_active():
+        await message.reply_text("❌ ربات در حال حاضر غیرفعال است.")
+        return
+
+    # اگر کاربر ادمین نیست، اجازه دسترسی نده
+    if message.from_user.id != Telegram.OWNER_ID:
+        await message.reply_text("❌ دسترسی denied. این ربات در حال حاضر فقط برای ادمین قابل استفاده است.")
+        return
+
     if not await verify_user(bot, message):
         return
+    
     usr_cmd = message.text.split("_")[-1]
 
     # اگر کاربر ادمین اصلی است، کیبورد ادمین نشان داده شود
@@ -34,22 +45,8 @@ async def start(bot: Client, message: Message):
             )
             return
 
-    if usr_cmd == "/start":
-        if Telegram.START_PIC:
-            await message.reply_photo(
-                photo=Telegram.START_PIC,
-                caption=LANG.START_TEXT.format(message.from_user.mention, FileStream.username),
-                parse_mode=ParseMode.HTML,
-                reply_markup=BUTTON.START_BUTTONS
-            )
-        else:
-            await message.reply_text(
-                text=LANG.START_TEXT.format(message.from_user.mention, FileStream.username),
-                parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True,
-                reply_markup=BUTTON.START_BUTTONS
-            )
-    else:
+    # پردازش لینک‌های stream_ و file_ فقط برای ادمین
+    if usr_cmd != "/start":
         if "stream_" in message.text:
             try:
                 file_check = await db.get_file(usr_cmd)
@@ -91,12 +88,33 @@ async def start(bot: Client, message: Message):
             except Exception as e:
                 await message.reply_text("❌ خطایی رخ داد")
                 logging.error(e)
-
         else:
             await message.reply_text(f"**دستور نامعتبر**")
+        return
+
+    # پیام start فقط برای ادمین
+    if Telegram.START_PIC:
+        await message.reply_photo(
+            photo=Telegram.START_PIC,
+            caption=LANG.START_TEXT.format(message.from_user.mention, FileStream.username),
+            parse_mode=ParseMode.HTML,
+            reply_markup=BUTTON.START_BUTTONS
+        )
+    else:
+        await message.reply_text(
+            text=LANG.START_TEXT.format(message.from_user.mention, FileStream.username),
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+            reply_markup=BUTTON.START_BUTTONS
+        )
 
 @FileStream.on_message(filters.private & filters.command(["about"]))
-async def start(bot, message):
+async def about_handler(bot, message):
+    # فقط ادمین می‌تواند از این دستور استفاده کند
+    if message.from_user.id != Telegram.OWNER_ID:
+        await message.reply_text("❌ دسترسی denied.")
+        return
+
     if not await verify_user(bot, message):
         return
     if Telegram.START_PIC:
@@ -115,6 +133,11 @@ async def start(bot, message):
 
 @FileStream.on_message((filters.command('help')) & filters.private)
 async def help_handler(bot, message):
+    # فقط ادمین می‌تواند از این دستور استفاده کند
+    if message.from_user.id != Telegram.OWNER_ID:
+        await message.reply_text("❌ دسترسی denied.")
+        return
+
     if not await verify_user(bot, message):
         return
     if Telegram.START_PIC:
@@ -136,6 +159,11 @@ async def help_handler(bot, message):
 
 @FileStream.on_message(filters.command('files') & filters.private)
 async def my_files(bot: Client, message: Message):
+    # فقط ادمین می‌تواند از این دستور استفاده کند
+    if message.from_user.id != Telegram.OWNER_ID:
+        await message.reply_text("❌ دسترسی denied.")
+        return
+
     if not await verify_user(bot, message):
         return
     user_files, total_files = await db.find_files(message.from_user.id, [1, 10])
