@@ -15,8 +15,8 @@ import asyncio
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 
-# ایمپورت وضعیت ربات از admin.py در پوشه plugins
-from FileStream.bot.plugins.admin import is_bot_active, get_main_admin_keyboard
+# ایمپورت کیبورد ادمین از admin.py در پوشه plugins
+from FileStream.bot.plugins.admin import ADMIN_KEYBOARD, is_bot_active
 
 @FileStream.on_message(filters.command('start') & filters.private)
 async def start(bot: Client, message: Message):
@@ -35,13 +35,10 @@ async def start(bot: Client, message: Message):
     # اگر کاربر ادمین اصلی است، کیبورد ادمین نشان داده شود
     if message.from_user.id == Telegram.OWNER_ID:
         if usr_cmd == "/start":
-            # استفاده از تابع برای گرفتن کیبورد ادمین
-            admin_keyboard = get_main_admin_keyboard(message.from_user.id)
             await message.reply_text(
-                text="🏠 **صفحه اصلی مدیریت**\n\n"
-                     "✅ = دسترسی فعال\n❌ = دسترسی غیرفعال\n\n"
+                text="🏠 **صفحه اصلی**\n\n"
                      "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
-                reply_markup=admin_keyboard
+                reply_markup=ADMIN_KEYBOARD
             )
             return
 
