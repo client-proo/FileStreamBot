@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 tehran_tz = pytz.timezone('Asia/Tehran')
 
-# ==================== توابع کمکی ====================
+# دیکشنری برای ذخیره وضعیت کاربران
+user_states = {}
 
 def get_tehran_time():
     return datetime.datetime.now(tehran_tz)
@@ -65,155 +66,237 @@ async def admin_panel(c: Client, m: Message):
 ├ 🚫 مسدود شده: `{banned_users}`
 └ 🕒 زمان: `{get_jalali_datetime()}`
 
-**لطفاً یکی از گزینه‌ها را انتخاب کنید:**"""
+**لطفاً یکی از گزینه‌های زیر را انتخاب کنید:**"""
 
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("📊 آمار کامل", callback_data="admin_stats")],
         [InlineKeyboardButton("👥 مدیریت کاربران", callback_data="admin_users")],
-        [InlineKeyboardButton("📢 ارسال همگانی", callback_data="admin_broadcast")],
-        [InlineKeyboardButton("🔍 اطلاعات کاربر", callback_data="admin_userinfo")],
-        [InlineKeyboardButton("🗑️ حذف فایل", callback_data="admin_delfile")],
+        [InlineKeyboardButton("📢 ارسال همگانی", callback_data="admin_broadcast_start")],
+        [InlineKeyboardButton("🗑️ حذف فایل", callback_data="admin_delete_file")],
         [InlineKeyboardButton("🔄 بروزرسانی", callback_data="admin_refresh")]
     ])
 
     await m.reply_text(text, reply_markup=keyboard, quote=True)
 
-# ==================== دستورات اصلی ====================
+# ==================== مدیریت کاربران ====================
 
-@FileStream.on_message(filters.command("status") & filters.private & filters.user(Telegram.OWNER_ID))
-async def status_command(c: Client, m: Message):
-    total_users = await db.total_users_count()
-    banned_users = await db.total_banned_users_count()
-    total_files = await db.total_files()
+@FileStream.on_callback_query(filters.regex(r"^admin_users$"))
+async def admin_users_menu(query: CallbackQuery):
+    text = """**👥 مدیریت کاربران**
+
+لطفاً یکی از عملیات‌ها را انتخاب کنید:"""
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📋 لیست کاربران", callback_data="users_list_1")],
+        [InlineKeyboardButton("🚫 مسدود کردن کاربر", callback_data="admin_ban_user")],
+        [InlineKeyboardButton("✅ رفع مسدودیت", callback_data="admin_unban_user")],
+        [InlineKeyboardButton("🔍 اطلاعات کاربر", callback_data="admin_user_info")],
+        [InlineKeyboardButton("🔙 بازگشت", callback_data="admin_back")]
+    ])
     
-    text = f"""**📊 وضعیت ربات:**
+    await query.message.edit_text(text, reply_markup=keyboard)
+    await query.answer()
 
-👥 کاربران کل: `{total_users}`
-🚫 کاربران مسدود: `{banned_users}`
-🔗 فایل‌های فعال: `{total_files}`
-🕒 زمان: `{get_jalali_datetime()}`"""
+@FileStream.on_callback_query(filters.regex(r"^admin_ban_user$"))
+async def admin_ban_user_start(query: CallbackQuery):
+    user_id = query.from_user.id
+    user_states[user_id] = {"action": "ban_user", "step": 1}
+    
+    text = """**🚫 مسدود کردن کاربر**
 
-    await m.reply_text(text, quote=True)
+لطفاً آیدی عددی کاربر را ارسال کنید:"""
 
-@FileStream.on_message(filters.command("ban") & filters.private & filters.user(Telegram.OWNER_ID))
-async def ban_command(c: Client, m: Message):
-    if len(m.command) < 2:
-        await m.reply_text("❌ لطفاً آیدی کاربر را وارد کنید:\n`/ban user_id`", quote=True)
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 بازگشت", callback_data="admin_users")]
+    ])
+    
+    await query.message.edit_text(text, reply_markup=keyboard)
+    await query.answer()
+
+@FileStream.on_callback_query(filters.regex(r"^admin_unban_user$"))
+async def admin_unban_user_start(query: CallbackQuery):
+    user_id = query.from_user.id
+    user_states[user_id] = {"action": "unban_user", "step": 1}
+    
+    text = """**✅ رفع مسدودیت کاربر**
+
+لطفاً آیدی عددی کاربر را ارسال کنید:"""
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 بازگشت", callback_data="admin_users")]
+    ])
+    
+    await query.message.edit_text(text, reply_markup=keyboard)
+    await query.answer()
+
+@FileStream.on_callback_query(filters.regex(r"^admin_user_info$"))
+async def admin_user_info_start(query: CallbackQuery):
+    user_id = query.from_user.id
+    user_states[user_id] = {"action": "user_info", "step": 1}
+    
+    text = """**🔍 اطلاعات کاربر**
+
+لطفاً آیدی عددی کاربر را ارسال کنید:"""
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 بازگشت", callback_data="admin_users")]
+    ])
+    
+    await query.message.edit_text(text, reply_markup=keyboard)
+    await query.answer()
+
+# ==================== ارسال همگانی ====================
+
+@FileStream.on_callback_query(filters.regex(r"^admin_broadcast_start$"))
+async def admin_broadcast_start(query: CallbackQuery):
+    user_id = query.from_user.id
+    user_states[user_id] = {"action": "broadcast", "step": 1}
+    
+    text = """**📢 ارسال پیام همگانی**
+
+لطفاً پیامی که می‌خواهید برای همه کاربران ارسال شود را بنویسید و ارسال کنید:"""
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 بازگشت", callback_data="admin_back")]
+    ])
+    
+    await query.message.edit_text(text, reply_markup=keyboard)
+    await query.answer()
+
+# ==================== حذف فایل ====================
+
+@FileStream.on_callback_query(filters.regex(r"^admin_delete_file$"))
+async def admin_delete_file_start(query: CallbackQuery):
+    user_id = query.from_user.id
+    user_states[user_id] = {"action": "delete_file", "step": 1}
+    
+    text = """**🗑️ حذف فایل**
+
+لطفاً آیدی فایل را ارسال کنید:"""
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 بازگشت", callback_data="admin_back")]
+    ])
+    
+    await query.message.edit_text(text, reply_markup=keyboard)
+    await query.answer()
+
+# ==================== پردازش پیام‌های متنی ====================
+
+@FileStream.on_message(filters.private & filters.user(Telegram.OWNER_ID) & filters.text)
+async def handle_admin_messages(c: Client, m: Message):
+    user_id = m.from_user.id
+    
+    if user_id not in user_states:
         return
     
-    user_id = m.command[1]
+    state = user_states[user_id]
+    action = state["action"]
     
+    if action == "ban_user":
+        await process_ban_user(m, state)
+    
+    elif action == "unban_user":
+        await process_unban_user(m, state)
+    
+    elif action == "user_info":
+        await process_user_info(m, state)
+    
+    elif action == "broadcast":
+        await process_broadcast(m, state)
+    
+    elif action == "delete_file":
+        await process_delete_file(m, state)
+
+async def process_ban_user(m: Message, state):
     try:
-        user_id = int(user_id)
-        if await db.is_user_banned(user_id):
-            await m.reply_text(f"✅ کاربر `{user_id}` قبلاً مسدود شده است.", quote=True)
-            return
+        user_id_to_ban = int(m.text)
         
-        await db.ban_user(user_id)
-        await m.reply_text(f"✅ کاربر `{user_id}` با موفقیت مسدود شد.", quote=True)
+        if await db.is_user_banned(user_id_to_ban):
+            await m.reply_text(f"✅ کاربر `{user_id_to_ban}` قبلاً مسدود شده است.", quote=True)
+        else:
+            await db.ban_user(user_id_to_ban)
+            await m.reply_text(f"✅ کاربر `{user_id_to_ban}` با موفقیت مسدود شد.", quote=True)
+        
+        # حذف وضعیت
+        if m.from_user.id in user_states:
+            del user_states[m.from_user.id]
+            
+        # بازگشت به منوی کاربران
+        await admin_users_menu(await create_callback_query(m))
         
     except ValueError:
-        await m.reply_text("❌ آیدی کاربر باید عددی باشد.", quote=True)
+        await m.reply_text("❌ آیدی کاربر باید عددی باشد. لطفاً دوباره تلاش کنید:", quote=True)
     except Exception as e:
         await m.reply_text(f"❌ خطا: {e}", quote=True)
 
-@FileStream.on_message(filters.command("unban") & filters.private & filters.user(Telegram.OWNER_ID))
-async def unban_command(c: Client, m: Message):
-    if len(m.command) < 2:
-        await m.reply_text("❌ لطفاً آیدی کاربر را وارد کنید:\n`/unban user_id`", quote=True)
-        return
-    
-    user_id = m.command[1]
-    
+async def process_unban_user(m: Message, state):
     try:
-        user_id = int(user_id)
-        if not await db.is_user_banned(user_id):
-            await m.reply_text(f"✅ کاربر `{user_id}` مسدود نیست.", quote=True)
-            return
+        user_id_to_unban = int(m.text)
         
-        await db.unban_user(user_id)
-        await m.reply_text(f"✅ مسدودیت کاربر `{user_id}` برداشته شد.", quote=True)
+        if not await db.is_user_banned(user_id_to_unban):
+            await m.reply_text(f"✅ کاربر `{user_id_to_unban}` مسدود نیست.", quote=True)
+        else:
+            await db.unban_user(user_id_to_unban)
+            await m.reply_text(f"✅ مسدودیت کاربر `{user_id_to_unban}` برداشته شد.", quote=True)
+        
+        # حذف وضعیت
+        if m.from_user.id in user_states:
+            del user_states[m.from_user.id]
+            
+        # بازگشت به منوی کاربران
+        await admin_users_menu(await create_callback_query(m))
         
     except ValueError:
-        await m.reply_text("❌ آیدی کاربر باید عددی باشد.", quote=True)
+        await m.reply_text("❌ آیدی کاربر باید عددی باشد. لطفاً دوباره تلاش کنید:", quote=True)
     except Exception as e:
         await m.reply_text(f"❌ خطا: {e}", quote=True)
 
-@FileStream.on_message(filters.command("userinfo") & filters.private & filters.user(Telegram.OWNER_ID))
-async def userinfo_command(c: Client, m: Message):
-    if len(m.command) < 2:
-        await m.reply_text("❌ لطفاً آیدی کاربر را وارد کنید:\n`/userinfo user_id`", quote=True)
-        return
-    
-    user_id = m.command[1]
-    
+async def process_user_info(m: Message, state):
     try:
-        user_id = int(user_id)
-        user = await db.get_user(user_id)
+        user_id_to_check = int(m.text)
+        user = await db.get_user(user_id_to_check)
         
         if not user:
-            await m.reply_text(f"❌ کاربر با آیدی `{user_id}` پیدا نشد.", quote=True)
-            return
-        
-        username = user.get('username', 'ندارد')
-        first_name = user.get('first_name', '')
-        last_name = user.get('last_name', '')
-        join_date = user.get('join_date', 0)
-        links_count = user.get('Links', 0)
-        is_banned = await db.is_user_banned(user_id)
-        
-        full_name = f"{first_name} {last_name}".strip()
-        if not full_name:
-            full_name = "نامشخص"
-        
-        join_date_str = datetime.datetime.fromtimestamp(join_date).strftime('%Y-%m-%d %H:%M:%S') if join_date else "نامشخص"
-        status = "🚫 مسدود" if is_banned else "✅ فعال"
-        
-        text = f"""**👤 اطلاعات کاربر:**
+            await m.reply_text(f"❌ کاربر با آیدی `{user_id_to_check}` پیدا نشد.", quote=True)
+        else:
+            username = user.get('username', 'ندارد')
+            first_name = user.get('first_name', '')
+            last_name = user.get('last_name', '')
+            join_date = user.get('join_date', 0)
+            links_count = user.get('Links', 0)
+            is_banned = await db.is_user_banned(user_id_to_check)
+            
+            full_name = f"{first_name} {last_name}".strip()
+            if not full_name:
+                full_name = "نامشخص"
+            
+            join_date_str = datetime.datetime.fromtimestamp(join_date).strftime('%Y-%m-%d %H:%M:%S') if join_date else "نامشخص"
+            status = "🚫 مسدود" if is_banned else "✅ فعال"
+            
+            text = f"""**👤 اطلاعات کاربر:**
 
-🆔 آیدی: `{user_id}`
+🆔 آیدی: `{user_id_to_check}`
 👤 نام: `{full_name}`
 📧 یوزرنیم: `{username}`
 📊 تعداد فایل‌ها: `{links_count}`
 📅 تاریخ عضویت: `{join_date_str}`
 🎯 وضعیت: {status}"""
 
-        await m.reply_text(text, quote=True)
+            await m.reply_text(text, quote=True)
         
+        # حذف وضعیت
+        if m.from_user.id in user_states:
+            del user_states[m.from_user.id]
+            
     except ValueError:
-        await m.reply_text("❌ آیدی کاربر باید عددی باشد.", quote=True)
+        await m.reply_text("❌ آیدی کاربر باید عددی باشد. لطفاً دوباره تلاش کنید:", quote=True)
     except Exception as e:
         await m.reply_text(f"❌ خطا: {e}", quote=True)
 
-@FileStream.on_message(filters.command("del") & filters.private & filters.user(Telegram.OWNER_ID))
-async def delete_file_command(c: Client, m: Message):
-    if len(m.command) < 2:
-        await m.reply_text("❌ لطفاً آیدی فایل را وارد کنید:\n`/del file_id`", quote=True)
-        return
-    
-    file_id = m.command[1]
-    
-    try:
-        file_info = await db.get_file(file_id)
-    except FIleNotFound:
-        await m.reply_text("❌ فایل پیدا نشد یا قبلاً حذف شده است.", quote=True)
-        return
-    
-    try:
-        await db.delete_one_file(file_info['_id'])
-        await db.count_links(file_info['user_id'], "-")
-        await m.reply_text("✅ فایل با موفقیت حذف شد.", quote=True)
-    except Exception as e:
-        await m.reply_text(f"❌ خطا در حذف فایل: {e}", quote=True)
-
-@FileStream.on_message(filters.command("broadcast") & filters.private & filters.user(Telegram.OWNER_ID) & filters.reply)
-async def broadcast_handler(c: Client, m: Message):
-    if not m.reply_to_message:
-        await m.reply_text("❌ لطفاً به پیامی که می‌خواهید ارسال کنید ریپلای کنید.", quote=True)
-        return
-
+async def process_broadcast(m: Message, state):
+    broadcast_msg = m
     all_users = await db.get_all_users()
-    broadcast_msg = m.reply_to_message
     total_users = await db.total_users_count()
 
     if total_users == 0:
@@ -262,32 +345,107 @@ async def broadcast_handler(c: Client, m: Message):
 🗓️ تاریخ: {get_jalali_datetime()}"""
 
     await m.reply_text(final_report, quote=True)
+    
+    # حذف وضعیت
+    if m.from_user.id in user_states:
+        del user_states[m.from_user.id]
 
-# ==================== هندلرهای کال‌بک ====================
+async def process_delete_file(m: Message, state):
+    file_id = m.text
+    
+    try:
+        file_info = await db.get_file(file_id)
+    except FIleNotFound:
+        await m.reply_text("❌ فایل پیدا نشد یا قبلاً حذف شده است.", quote=True)
+        # حذف وضعیت
+        if m.from_user.id in user_states:
+            del user_states[m.from_user.id]
+        return
+    
+    try:
+        await db.delete_one_file(file_info['_id'])
+        await db.count_links(file_info['user_id'], "-")
+        await m.reply_text("✅ فایل با موفقیت حذف شد.", quote=True)
+        
+        # حذف وضعیت
+        if m.from_user.id in user_states:
+            del user_states[m.from_user.id]
+            
+    except Exception as e:
+        await m.reply_text(f"❌ خطا در حذف فایل: {e}", quote=True)
 
-@FileStream.on_callback_query(filters.regex(r"^admin_"))
-async def admin_callback_handler(c: Client, query: CallbackQuery):
-    data = query.data
-    
-    if data == "admin_stats":
-        await show_complete_stats(query)
-    
-    elif data == "admin_users":
-        await show_users_management(query)
-    
-    elif data == "admin_broadcast":
-        await broadcast_guide(query)
-    
-    elif data == "admin_userinfo":
-        await userinfo_guide(query)
-    
-    elif data == "admin_delfile":
-        await delfile_guide(query)
-    
-    elif data == "admin_refresh":
-        await admin_panel(c, query.message)
-        await query.answer("✅ پنل بروزرسانی شد")
+# ==================== لیست کاربران ====================
 
+@FileStream.on_callback_query(filters.regex(r"^users_list_"))
+async def users_list_handler(query: CallbackQuery):
+    try:
+        page = int(query.data.split("_")[2])
+        await show_users_page(query, page)
+    except:
+        await show_users_page(query, 1)
+
+async def show_users_page(query: CallbackQuery, page: int):
+    all_users = await db.get_all_users()
+    users_list = []
+    async for user in all_users:
+        users_list.append(user)
+
+    users_list.sort(key=lambda x: x.get('join_date', 0), reverse=True)
+    total_users = len(users_list)
+    
+    users_per_page = 8
+    start_idx = (page - 1) * users_per_page
+    end_idx = start_idx + users_per_page
+    page_users = users_list[start_idx:end_idx]
+
+    total_pages = (total_users + users_per_page - 1) // users_per_page
+
+    text = f"**👥 لیست کاربران**\n\n"
+    text += f"📊 **صفحه:** `{page}/{total_pages}`\n"
+    text += f"👤 **کل کاربران:** `{total_users}`\n\n"
+
+    for i, user in enumerate(page_users, start=start_idx + 1):
+        user_id = user['id']
+        username = user.get('username', 'ندارد')
+        first_name = user.get('first_name', '')
+        last_name = user.get('last_name', '')
+        links_count = user.get('Links', 0)
+        is_banned = await db.is_user_banned(user_id)
+
+        full_name = f"{first_name} {last_name}".strip()
+        if not full_name:
+            full_name = "نامشخص"
+
+        status = "🚫" if is_banned else "✅"
+        
+        text += f"**{i}. {full_name}**\n"
+        text += f"├ 🆔: `{user_id}`\n"
+        text += f"├ 📧: {username}\n"
+        text += f"├ 🔗: `{links_count}` فایل\n"
+        text += f"└ 🎯: {status}\n\n"
+
+    buttons = []
+    if page > 1:
+        buttons.append(InlineKeyboardButton("◀️ قبلی", callback_data=f"users_list_{page-1}"))
+    
+    buttons.append(InlineKeyboardButton(f"{page}/{total_pages}", callback_data="users_current"))
+    
+    if page < total_pages:
+        buttons.append(InlineKeyboardButton("بعدی ▶️", callback_data=f"users_list_{page+1}"))
+
+    keyboard = []
+    if buttons:
+        keyboard.append(buttons)
+    
+    keyboard.append([InlineKeyboardButton("🔙 بازگشت", callback_data="admin_users")])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.message.edit_text(text, reply_markup=reply_markup)
+    await query.answer()
+
+# ==================== آمار کامل ====================
+
+@FileStream.on_callback_query(filters.regex(r"^admin_stats$"))
 async def show_complete_stats(query: CallbackQuery):
     total_users = await db.total_users_count()
     total_files = await db.total_files()
@@ -325,30 +483,26 @@ async def show_complete_stats(query: CallbackQuery):
     await query.message.edit_text(text, reply_markup=keyboard)
     await query.answer()
 
-async def show_users_management(query: CallbackQuery):
-    text = """**👥 مدیریت کاربران**
+# ==================== سایر هندلرها ====================
 
-برای مدیریت کاربران از دستورات زیر استفاده کنید:
-
-🚫 **مسدود کردن کاربر:**
-`/ban user_id`
-
-✅ **رفع مسدودیت:**
-`/unban user_id`
-
-🔍 **اطلاعات کاربر:**
-`/userinfo user_id`"""
-
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔙 بازگشت", callback_data="admin_back")]
-    ])
-    
-    await query.message.edit_text(text, reply_markup=keyboard)
+@FileStream.on_callback_query(filters.regex(r"^admin_back$"))
+async def admin_back_handler(query: CallbackQuery):
+    await admin_panel(FileStream, query.message)
     await query.answer()
 
-async def broadcast_guide(query: CallbackQuery):
-    text = """**📢 ارسال پیام همگانی**
+@FileStream.on_callback_query(filters.regex(r"^admin_refresh$"))
+async def admin_refresh_handler(query: CallbackQuery):
+    await admin_panel(FileStream, query.message)
+    await query.answer("✅ پنل بروزرسانی شد")
 
-1. پیام خود را بنویسید
-2. روی آن ریپلای کنید  
-3. از دستور زیر استفاده کنید:
+# تابع کمکی برای ایجاد شبه کال‌بک
+async def create_callback_query(m: Message):
+    class MockCallbackQuery:
+        def __init__(self, message):
+            self.message = message
+            self.from_user = m.from_user
+            
+        async def answer(self, *args, **kwargs):
+            pass
+            
+    return MockCallbackQuery(m)
