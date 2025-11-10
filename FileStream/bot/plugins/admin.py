@@ -121,21 +121,59 @@ def require_permission(permission: str):
         return wrapper
     return decorator
 
-# کیبورد مدیریت ادمین
-ADMIN_KEYBOARD = ReplyKeyboardMarkup(
-    [
-        [
-            KeyboardButton("📊 مشاهده فایل ها و آمار"),
-            KeyboardButton("🔊 ارسال پیام همگانی")
-        ],
-        [
-            KeyboardButton("⚙️ تنظیمات"), 
-            KeyboardButton("🔴 خاموش/روشن کردن ربات")
-        ]
-    ],
-    resize_keyboard=True,
-    selective=True
-)
+# ایجاد کیبورد اصلی با نمایش وضعیت دسترسی‌ها
+def get_main_admin_keyboard(user_id: int) -> ReplyKeyboardMarkup:
+    """ایجاد کیبورد اصلی با آیکون‌های وضعیت دسترسی"""
+    buttons = []
+    
+    # ردیف اول
+    row1 = []
+    if has_permission(user_id, 'view_stats'):
+        row1.append(KeyboardButton("📊 مشاهده آمار ربات ✅"))
+    else:
+        row1.append(KeyboardButton("📊 مشاهده آمار ربات ❌"))
+    
+    if has_permission(user_id, 'broadcast'):
+        row1.append(KeyboardButton("🔊 ارسال پیام همگانی ✅"))
+    else:
+        row1.append(KeyboardButton("🔊 ارسال پیام همگانی ❌"))
+    buttons.append(row1)
+    
+    # ردیف دوم
+    row2 = []
+    if has_permission(user_id, 'change_settings'):
+        row2.append(KeyboardButton("⚙️ تنظیمات ربات ✅"))
+    else:
+        row2.append(KeyboardButton("⚙️ تنظیمات ربات ❌"))
+    
+    if has_permission(user_id, 'toggle_bot'):
+        row2.append(KeyboardButton("🔴 خاموش/روشن کردن ربات ✅"))
+    else:
+        row2.append(KeyboardButton("🔴 خاموش/روشن کردن ربات ❌"))
+    buttons.append(row2)
+    
+    # ردیف سوم
+    row3 = []
+    if has_permission(user_id, 'delete_files'):
+        row3.append(KeyboardButton("🗑️ حذف فایل ها ✅"))
+    else:
+        row3.append(KeyboardButton("🗑️ حذف فایل ها ❌"))
+    
+    if has_permission(user_id, 'manage_admins'):
+        row3.append(KeyboardButton("👥 مدیریت ادمین ها ✅"))
+    else:
+        row3.append(KeyboardButton("👥 مدیریت ادمین ها ❌"))
+    buttons.append(row3)
+    
+    # ردیف چهارم
+    row4 = []
+    if has_permission(user_id, 'manage_comments'):
+        row4.append(KeyboardButton("💬 دریافت و پاسخ به کامنت ✅"))
+    else:
+        row4.append(KeyboardButton("💬 دریافت و پاسخ به کامنت ❌"))
+    buttons.append(row4)
+    
+    return ReplyKeyboardMarkup(buttons, resize_keyboard=True, selective=True)
 
 @FileStream.on_message(filters.command("panel") & filters.private)
 async def admin_panel_handler(bot: Client, message: Message):
@@ -143,10 +181,12 @@ async def admin_panel_handler(bot: Client, message: Message):
         await message.reply_text("❌ شما دسترسی به پنل مدیریت ندارید.")
         return
         
+    keyboard = get_main_admin_keyboard(message.from_user.id)
     await message.reply_text(
-        "🏠 **صفحه اصلی**\n\n"
+        "🏠 **صفحه اصلی مدیریت**\n\n"
+        "✅ = دسترسی فعال\n❌ = دسترسی غیرفعال\n\n"
         "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
-        reply_markup=ADMIN_KEYBOARD
+        reply_markup=keyboard
     )
 
 @FileStream.on_message(filters.private)
@@ -160,11 +200,12 @@ async def admin_message_handler(bot: Client, message: Message):
     
     # اگر کاربر در حالت ارسال پیام همگانی است
     if user_id in user_states and user_states[user_id] == "awaiting_broadcast":
-        if message.text == "🔙 بازگشت":
+        if "بازگشت" in message.text or "🔙" in message.text:
             del user_states[user_id]
+            keyboard = get_main_admin_keyboard(user_id)
             await message.reply_text(
                 "🏠 به صفحه اصلی بازگشتید",
-                reply_markup=ADMIN_KEYBOARD
+                reply_markup=keyboard
             )
             return
         
@@ -172,9 +213,10 @@ async def admin_message_handler(bot: Client, message: Message):
         if not has_permission(user_id, 'broadcast'):
             await message.reply_text("❌ شما دسترسی به ارسال پیام همگانی ندارید.")
             del user_states[user_id]
+            keyboard = get_main_admin_keyboard(user_id)
             await message.reply_text(
                 "🏠 به صفحه اصلی بازگشتید",
-                reply_markup=ADMIN_KEYBOARD
+                reply_markup=keyboard
             )
             return
         
@@ -184,20 +226,20 @@ async def admin_message_handler(bot: Client, message: Message):
 
     # اگر کاربر در حالت افزودن ادمین است
     if user_id in user_states and user_states[user_id] == "adding_admin":
-        if message.text and message.text == "/cancel":
+        if message.text and ("لغو" in message.text or message.text == "/cancel"):
             del user_states[user_id]
+            keyboard = get_main_admin_keyboard(user_id)
             await message.reply_text(
                 "❌ عملیات افزودن ادمین لغو شد.",
-                reply_markup=ADMIN_KEYBOARD
+                reply_markup=keyboard
             )
             return
         
         await process_add_admin(bot, message)
         return
 
-    # پردازش دکمه‌های کیبورد
-    if message.text == "📊 مشاهده فایل ها و آمار":
-        # چک دسترسی مشاهده آمار
+    # پردازش دکمه‌های کیبورد اصلی
+    if "مشاهده آمار ربات" in message.text:
         if not has_permission(user_id, 'view_stats'):
             await message.reply_text("❌ شما دسترسی به مشاهده آمار را ندارید.")
             return
@@ -214,10 +256,10 @@ async def admin_message_handler(bot: Client, message: Message):
             f"🔌 وضعیت ربات: `{'🟢 روشن' if bot_status else '🔴 خاموش'}`"
         )
         
-        await message.reply_text(stats_text, reply_markup=ADMIN_KEYBOARD)
+        keyboard = get_main_admin_keyboard(user_id)
+        await message.reply_text(stats_text, reply_markup=keyboard)
     
-    elif message.text == "🔊 ارسال پیام همگانی":
-        # چک دسترسی ارسال همگانی
+    elif "ارسال پیام همگانی" in message.text:
         if not has_permission(user_id, 'broadcast'):
             await message.reply_text("❌ شما دسترسی به ارسال پیام همگانی ندارید.")
             return
@@ -231,10 +273,14 @@ async def admin_message_handler(bot: Client, message: Message):
             "• فایل فوروارد کنید 📎\n\n"
             "پیام شما مستقیماً برای همه کاربران ارسال خواهد شد.\n\n"
             "برای بازگشت از دکمه 🔙 استفاده کنید.",
-            reply_markup=ReplyKeyboardMarkup([[KeyboardButton("🔙 بازگشت")]], resize_keyboard=True)
+            reply_markup=ReplyKeyboardMarkup([[KeyboardButton("🔙 بازگشت به صفحه اصلی")]], resize_keyboard=True)
         )
     
-    elif message.text == "⚙️ تنظیمات":
+    elif "تنظیمات ربات" in message.text:
+        if not has_permission(user_id, 'change_settings'):
+            await message.reply_text("❌ شما دسترسی به تنظیمات را ندارید.")
+            return
+            
         # ایجاد کیبورد اینلاین برای تنظیمات
         settings_keyboard = InlineKeyboardMarkup([
             [
@@ -262,8 +308,7 @@ async def admin_message_handler(bot: Client, message: Message):
         
         await message.reply_text(settings_text, reply_markup=settings_keyboard)
     
-    elif message.text == "🔴 خاموش/روشن کردن ربات":
-        # چک دسترسی خاموش/روشن کردن
+    elif "خاموش/روشن کردن ربات" in message.text:
         if not has_permission(user_id, 'toggle_bot'):
             await message.reply_text("❌ شما دسترسی به خاموش/روشن کردن ربات را ندارید.")
             return
@@ -277,14 +322,47 @@ async def admin_message_handler(bot: Client, message: Message):
         else:
             status_text = "🔴 **ربات خاموش شد**\n\nکاربران دیگر نمی‌توانند فایل‌ها را دریافت کنند."
         
-        await message.reply_text(status_text, reply_markup=ADMIN_KEYBOARD)
+        keyboard = get_main_admin_keyboard(user_id)
+        await message.reply_text(status_text, reply_markup=keyboard)
     
-    elif message.text == "🔙 بازگشت":
+    elif "حذف فایل ها" in message.text:
+        if not has_permission(user_id, 'delete_files'):
+            await message.reply_text("❌ شما دسترسی به حذف فایل‌ها را ندارید.")
+            return
+            
+        await message.reply_text(
+            "🗑️ **حذف فایل‌ها**\n\n"
+            "برای حذف فایل‌ها از دستورهای زیر استفاده کنید:\n"
+            "• `/del file_id` - حذف فایل مشخص\n"
+            "• `/ban user_id` - مسدود کردن کاربر\n"
+            "• `/unban user_id` - رفع مسدودیت کاربر"
+        )
+    
+    elif "مدیریت ادمین ها" in message.text:
+        if not has_permission(user_id, 'manage_admins'):
+            await message.reply_text("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.")
+            return
+            
+        await show_admins_list(bot, message=message)
+    
+    elif "دریافت و پاسخ به کامنت" in message.text:
+        if not has_permission(user_id, 'manage_comments'):
+            await message.reply_text("❌ شما دسترسی به مدیریت کامنت‌ها را ندارید.")
+            return
+            
+        await message.reply_text(
+            "💬 **مدیریت کامنت‌ها**\n\n"
+            "این قابلیت به زودی اضافه خواهد شد...\n"
+            "در این بخش می‌توانید به کامنت‌های کاربران پاسخ دهید."
+        )
+    
+    elif "بازگشت" in message.text or "🔙" in message.text:
         if user_id in user_states:
             del user_states[user_id]
+        keyboard = get_main_admin_keyboard(user_id)
         await message.reply_text(
             "🏠 به صفحه اصلی بازگشتید",
-            reply_markup=ADMIN_KEYBOARD
+            reply_markup=keyboard
         )
 
 async def process_add_admin(bot: Client, message: Message):
@@ -303,47 +381,39 @@ async def process_add_admin(bot: Client, message: Message):
         # بررسی اگر پیام فوروارد شده است
         if message.forward_from:
             target_user = message.forward_from
-            print(f"Found user from forward: {target_user.id} - {target_user.first_name}")
         # بررسی اگر یوزرنیم ارسال شده
         elif message.text and message.text.startswith('@'):
             username = message.text[1:].strip()
-            print(f"Looking up username: {username}")
             try:
                 target_user = await bot.get_users(username)
-                print(f"Found user by username: {target_user.id} - {target_user.first_name}")
             except Exception as e:
-                print(f"Error looking up username: {e}")
                 await message.reply_text("❌ کاربری با این یوزرنیم یافت نشد.")
                 return
         # بررسی اگر آیدی عددی ارسال شده
         elif message.text and message.text.strip().replace(' ', '').isdigit():
             user_id_str = message.text.strip().replace(' ', '')
             user_id_int = int(user_id_str)
-            print(f"Looking up user ID: {user_id_int}")
             try:
                 target_user = await bot.get_users(user_id_int)
-                print(f"Found user by ID: {target_user.id} - {target_user.first_name}")
             except Exception as e:
-                print(f"Error looking up user ID: {e}")
                 await message.reply_text("❌ کاربری با این آیدی یافت نشد.")
                 return
         else:
-            print(f"No valid method detected. Text: '{message.text}', Forward: {message.forward_from}")
             await message.reply_text(
                 "❌ لطفاً یک روش معتبر برای افزودن ادمین استفاده کنید:\n\n"
                 "• یک پیام از کاربر مورد نظر فوروارد کنید\n"
                 "• یوزرنیم کاربر را با @ ارسال کنید\n" 
                 "• آیدی عددی کاربر را ارسال کنید\n\n"
-                "برای لغو /cancel را بزنید."
+                "برای لغو از کلمه 'لغو' استفاده کنید."
             )
             return
         
         if target_user:
-            # اضافه کردن کاربر به لیست ادمین‌ها با دسترسی کامل
+            # اضافه کردن کاربر به لیست ادمین‌ها
             admins_data[target_user.id] = {
                 'name': target_user.first_name or "بدون نام",
                 'username': target_user.username or 'ندارد',
-                'permissions': ['all']  # دسترسی کامل مانند صاحب ربات
+                'permissions': []  # ابتدا هیچ دسترسیی ندارد
             }
             save_admins(admins_data)
             
@@ -354,7 +424,9 @@ async def process_add_admin(bot: Client, message: Message):
             success_text = (
                 "✅ **ادمین با موفقیت افزوده شد.**\n\n"
                 f"👤 **نام:** {target_user.first_name or 'بدون نام'}\n"
-                f"🆔 **آیدی:** `{target_user.id}`"
+                f"🆔 **آیدی:** `{target_user.id}`\n\n"
+                "⚠️ توجه: ادمین جدید ابتدا هیچ دسترسیی ندارد. "
+                "لطفاً از بخش مدیریت ادمین‌ها دسترسی‌های مورد نیاز را فعال کنید."
             )
             
             await message.reply_text(success_text)
@@ -375,35 +447,35 @@ async def show_admins_list(bot: Client, message: Message = None, callback_query:
     
     if not display_admins:
         admins_keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("ادمینی ثبت نشده است", callback_data="N/A")],
-            [InlineKeyboardButton("افزودن ادمین جدید➕", callback_data="add_admin")],
+            [InlineKeyboardButton("➕ افزودن ادمین جدید", callback_data="add_admin")],
             [InlineKeyboardButton("🔙 بازگشت", callback_data="settings_back")]
         ])
         
-        text = "**لیست ادمین های ثبت شده در ربات👇👇**\n\nدر حال حاضر هیچ ادمینی ثبت نشده است."
+        text = "**👥 مدیریت ادمین‌ها**\n\nدر حال حاضر هیچ ادمینی ثبت نشده است."
     else:
-        # ایجاد کیبورد برای ادمین‌ها - چهار دکمه جداگانه
+        # ایجاد کیبورد برای ادمین‌ها
         keyboard_buttons = []
         for admin_id, admin_info in display_admins.items():
-            # کوتاه کردن نام اگر طولانی باشد
-            name_display = admin_info['name']
-            if len(name_display) > 15:
-                name_display = name_display[:12] + "..."
+            # شمارش تعداد دسترسی‌های فعال
+            active_permissions = len([p for p in PERMISSIONS_LIST if has_permission(admin_id, p[0])])
+            total_permissions = len(PERMISSIONS_LIST)
             
-            # چهار دکمه جداگانه در یک ردیف
+            # نمایش نام و تعداد دسترسی‌ها
+            name_display = admin_info['name']
+            if len(name_display) > 20:
+                name_display = name_display[:17] + "..."
+            
+            button_text = f"{name_display} ({active_permissions}/{total_permissions})"
             keyboard_buttons.append([
-                InlineKeyboardButton(str(admin_id), callback_data=f"admin_info_{admin_id}"),
-                InlineKeyboardButton(name_display, callback_data=f"admin_info_{admin_id}"),
-                InlineKeyboardButton("⚙", callback_data=f"admin_settings_{admin_id}"),
-                InlineKeyboardButton("❌", callback_data=f"admin_delete_{admin_id}")
+                InlineKeyboardButton(button_text, callback_data=f"admin_settings_{admin_id}")
             ])
         
         # دکمه افزودن ادمین جدید
-        keyboard_buttons.append([InlineKeyboardButton("افزودن ادمین جدید➕", callback_data="add_admin")])
+        keyboard_buttons.append([InlineKeyboardButton("➕ افزودن ادمین جدید", callback_data="add_admin")])
         keyboard_buttons.append([InlineKeyboardButton("🔙 بازگشت", callback_data="settings_back")])
         
         admins_keyboard = InlineKeyboardMarkup(keyboard_buttons)
-        text = "**لیست ادمین های ثبت شده در ربات👇👇**"
+        text = "**👥 مدیریت ادمین‌ها**\n\nلیست ادمین‌های ثبت شده:"
     
     if message:
         await message.reply_text(text, reply_markup=admins_keyboard)
@@ -411,11 +483,10 @@ async def show_admins_list(bot: Client, message: Message = None, callback_query:
         try:
             await callback_query.message.edit_text(text, reply_markup=admins_keyboard)
         except Exception as e:
-            # اگر ویرایش پیام ممکن نبود، پیام جدید ارسال کن
             await callback_query.message.reply_text(text, reply_markup=admins_keyboard)
 
 async def show_admin_settings(bot: Client, admin_id: int, callback_query: CallbackQuery):
-    """نمایش تنظیمات ادمین"""
+    """نمایش تنظیمات ادمین با دکمه‌های Toggle"""
     admin_info = admins_data.get(admin_id)
     if not admin_info:
         await callback_query.answer("❌ ادمین یافت نشد!", show_alert=True)
@@ -425,26 +496,28 @@ async def show_admin_settings(bot: Client, admin_id: int, callback_query: Callba
     current_permissions = admin_info.get('permissions', [])
     
     text = (
-        f"**تنظیمات دسترسی های ادمین ({admin_id}) در ربات👇👇**\n\n"
-        f"**نام:** {admin_info['name']}\n"
-        f"**یوزرنیم:** @{admin_info['username']}\n\n"
+        f"**⚙️ تنظیمات دسترسی ادمین**\n\n"
+        f"👤 **نام:** {admin_info['name']}\n"
+        f"📱 **یوزرنیم:** @{admin_info['username']}\n"
+        f"🆔 **آیدی:** `{admin_id}`\n\n"
         "**دسترسی‌ها:**"
     )
     
-    # Create permission buttons with ✅/❌ icons
+    # Create toggle buttons for each permission
     permission_buttons = []
     for perm_key, perm_name in PERMISSIONS_LIST:
-        has_permission = 'all' in current_permissions or perm_key in current_permissions
-        icon = "✅" if has_permission else "❌"
+        has_perm = 'all' in current_permissions or perm_key in current_permissions
+        icon = "✅" if has_perm else "❌"
         button_text = f"{icon} {perm_name}"
         permission_buttons.append([
             InlineKeyboardButton(button_text, callback_data=f"perm_toggle_{admin_id}_{perm_key}")
         ])
     
-    # Add other buttons
+    # Add control buttons
     permission_buttons.extend([
-        [InlineKeyboardButton("🔄 تغییر ادمین به صاحب ربات", callback_data=f"make_owner_{admin_id}")],
-        [InlineKeyboardButton("🗑️ حذف از لیست ادمین ها", callback_data=f"admin_delete_confirm_{admin_id}")],
+        [InlineKeyboardButton("🎯 دسترسی کامل", callback_data=f"perm_all_{admin_id}")],
+        [InlineKeyboardButton("🚫 حذف تمام دسترسی‌ها", callback_data=f"perm_none_{admin_id}")],
+        [InlineKeyboardButton("🗑️ حذف ادمین", callback_data=f"admin_delete_confirm_{admin_id}")],
         [InlineKeyboardButton("🔙 بازگشت", callback_data="settings_admins")]
     ])
     
@@ -482,7 +555,6 @@ async def handle_settings_callback(bot: Client, update: CallbackQuery, data: str
         await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
     
     elif data == "settings_admins":
-        # چک دسترسی مدیریت ادمین‌ها
         if not has_permission(update.from_user.id, 'manage_admins'):
             await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
             return
@@ -496,22 +568,25 @@ async def handle_settings_callback(bot: Client, update: CallbackQuery, data: str
     
     elif data == "settings_back":
         try:
+            keyboard = get_main_admin_keyboard(update.from_user.id)
             await update.message.edit_text(
-                "🏠 **صفحه اصلی**\n\n"
+                "🏠 **صفحه اصلی مدیریت**\n\n"
+                "✅ = دسترسی فعال\n❌ = دسترسی غیرفعال\n\n"
                 "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
-                reply_markup=ADMIN_KEYBOARD
+                reply_markup=keyboard
             )
         except Exception as e:
+            keyboard = get_main_admin_keyboard(update.from_user.id)
             await update.message.reply_text(
-                "🏠 **صفحه اصلی**\n\n"
+                "🏠 **صفحه اصلی مدیریت**\n\n"
+                "✅ = دسترسی فعال\n❌ = دسترسی غیرفعال\n\n"
                 "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
-                reply_markup=ADMIN_KEYBOARD
+                reply_markup=keyboard
             )
 
 async def handle_admin_management_callback(bot: Client, update: CallbackQuery, data: str):
     """مدیریت callback‌های مربوط به ادمین‌ها"""
     if data == "add_admin":
-        # چک دسترسی مدیریت ادمین‌ها
         if not has_permission(update.from_user.id, 'manage_admins'):
             await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
             return
@@ -524,7 +599,7 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
                 "- یک پیام از کاربر مورد نظر فوروارد کنید\n"
                 "- یوزرنیم کاربر را با @ ارسال کنید\n" 
                 "- آیدی عددی کاربر را ارسال کنید\n\n"
-                "برای لغو /cancel را بزنید."
+                "برای لغو از کلمه 'لغو' استفاده کنید."
             )
         except Exception as e:
             await update.message.reply_text(
@@ -533,19 +608,10 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
                 "- یک پیام از کاربر مورد نظر فوروارد کنید\n"
                 "- یوزرنیم کاربر را با @ ارسال کنید\n"
                 "- آیدی عددی کاربر را ارسال کنید\n\n"
-                "برای لغو /cancel را بزنید."
+                "برای لغو از کلمه 'لغو' استفاده کنید."
             )
     
-    elif data.startswith("admin_info_"):
-        admin_id = int(data.split("_")[2])
-        admin_info = admins_data.get(admin_id)
-        if admin_info:
-            await update.answer(f"اطلاعات ادمین:\nنام: {admin_info['name']}\nیوزرنیم: @{admin_info['username']}", show_alert=True)
-        else:
-            await update.answer("❌ ادمین یافت نشد!", show_alert=True)
-    
     elif data.startswith("admin_settings_"):
-        # چک دسترسی مدیریت ادمین‌ها
         if not has_permission(update.from_user.id, 'manage_admins'):
             await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
             return
@@ -554,7 +620,6 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
         await show_admin_settings(bot, admin_id, update)
     
     elif data.startswith("admin_delete_"):
-        # چک دسترسی مدیریت ادمین‌ها
         if not has_permission(update.from_user.id, 'manage_admins'):
             await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
             return
@@ -573,7 +638,6 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
             await update.answer("❌ ادمین یافت نشد!", show_alert=True)
     
     elif data.startswith("admin_delete_confirm_"):
-        # چک دسترسی مدیریت ادمین‌ها
         if not has_permission(update.from_user.id, 'manage_admins'):
             await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
             return
@@ -608,7 +672,6 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
                 )
     
     elif data.startswith("perm_toggle_"):
-        # چک دسترسی مدیریت ادمین‌ها
         if not has_permission(update.from_user.id, 'manage_admins'):
             await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
             return
@@ -640,8 +703,46 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
         else:
             await update.answer("❌ ادمین یافت نشد!", show_alert=True)
     
-    elif data.startswith("make_owner_"):
-        await update.answer("❌ این قابلیت در حال حاضر فعال نیست!", show_alert=True)
+    elif data.startswith("perm_all_"):
+        if not has_permission(update.from_user.id, 'manage_admins'):
+            await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
+            return
+            
+        admin_id = int(data.split("_")[2])
+        
+        if admin_id in admins_data:
+            admin_info = admins_data[admin_id]
+            # دادن تمام دسترسی‌ها
+            admin_info['permissions'] = [perm[0] for perm in PERMISSIONS_LIST]
+            admins_data[admin_id] = admin_info
+            save_admins(admins_data)
+            
+            await show_admin_settings(bot, admin_id, update)
+            await update.answer("✅ تمام دسترسی‌ها فعال شد!", show_alert=True)
+        else:
+            await update.answer("❌ ادمین یافت نشد!", show_alert=True)
+    
+    elif data.startswith("perm_none_"):
+        if not has_permission(update.from_user.id, 'manage_admins'):
+            await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
+            return
+            
+        admin_id = int(data.split("_")[2])
+        
+        if admin_id in admins_data:
+            admin_info = admins_data[admin_id]
+            # حذف تمام دسترسی‌ها
+            admin_info['permissions'] = []
+            admins_data[admin_id] = admin_info
+            save_admins(admins_data)
+            
+            await show_admin_settings(bot, admin_id, update)
+            await update.answer("✅ تمام دسترسی‌ها غیرفعال شد!", show_alert=True)
+        else:
+            await update.answer("❌ ادمین یافت نشد!", show_alert=True)
+
+# بقیه توابع بدون تغییر (start_broadcast, command handlers و...) 
+# [کدهای قبلی مربوط به broadcast و command handlers در اینجا قرار می‌گیرد]
 
 async def start_broadcast(bot: Client, message: Message, broadcast_msg: Message):
     user_id = message.from_user.id
@@ -721,7 +822,7 @@ async def start_broadcast(bot: Client, message: Message, broadcast_msg: Message)
                  f"📤 ارسال شده: {done}\n"
                  f"✅ موفق: {success}\n"
                  f"❌ ناموفق: {failed}",
-            reply_markup=ADMIN_KEYBOARD,
+            reply_markup=get_main_admin_keyboard(user_id),
             quote=True
         )
     else:
@@ -732,7 +833,7 @@ async def start_broadcast(bot: Client, message: Message, broadcast_msg: Message)
                     f"📤 ارسال شده: {done}\n"
                     f"✅ موفق: {success}\n"
                     f"❌ ناموفق: {failed}",
-            reply_markup=ADMIN_KEYBOARD,
+            reply_markup=get_main_admin_keyboard(user_id),
             quote=True
         )
         try:
