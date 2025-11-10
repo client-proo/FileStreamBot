@@ -47,7 +47,7 @@ async def admin_panel_handler(bot: Client, message: Message):
 
 @FileStream.on_message(filters.private & filters.text & filters.user(Telegram.OWNER_ID))
 async def admin_buttons_handler(bot: Client, message: Message):
-    global bot_status
+    bot_status = not bot_status
     
     if message.text == "📊 مشاهده فایل ها و آمار":
         total_users = await db.total_users_count()
