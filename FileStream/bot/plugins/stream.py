@@ -15,7 +15,7 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.enums.parse_mode import ParseMode
 
 # ایمپورت وضعیت ربات از admin
-from FileStream.bot.admin import is_bot_active
+from FileStream.bot.plugins.admin import is_bot_active
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 
