@@ -26,6 +26,17 @@ BOT_STATUS_FILE = "bot_status.pkl"
 # فایل برای ذخیره لیست ادمین‌ها
 ADMINS_FILE = "admins.pkl"
 
+# لیست دسترسی‌ها
+PERMISSIONS_LIST = [
+    ('change_settings', 'تغییر تنظیمات ربات'),
+    ('view_stats', 'مشاهده آمار ربات'),
+    ('broadcast', 'ارسال پیام همگانی'),
+    ('delete_files', 'حذف فایل ها'),
+    ('toggle_bot', 'خاموش و روشن کردن ربات'),
+    ('manage_admins', 'مدیریت ادمین ها'),
+    ('manage_comments', 'دریافت و پاسخ به کامنت ها')
+]
+
 # حالت‌های کاربران
 user_states = {}
 
@@ -85,6 +96,31 @@ def is_admin(user_id: int) -> bool:
     """چک کردن آیا کاربر ادمین است یا نه"""
     return user_id == Telegram.OWNER_ID or user_id in admins_data
 
+# تابع برای چک کردن دسترسی خاص
+def has_permission(user_id: int, permission: str) -> bool:
+    """چک کردن دسترسی ادمین به یک قابلیت خاص"""
+    if user_id == Telegram.OWNER_ID:
+        return True
+    
+    admin_info = admins_data.get(user_id)
+    if not admin_info:
+        return False
+    
+    permissions = admin_info.get('permissions', [])
+    return 'all' in permissions or permission in permissions
+
+# دکوراتور برای چک کردن دسترسی
+def require_permission(permission: str):
+    """دکوراتور برای چک کردن دسترسی"""
+    def decorator(func):
+        async def wrapper(client, message):
+            if not has_permission(message.from_user.id, permission):
+                await message.reply_text("❌ شما دسترسی به این قابلیت را ندارید.")
+                return
+            return await func(client, message)
+        return wrapper
+    return decorator
+
 # کیبورد مدیریت ادمین
 ADMIN_KEYBOARD = ReplyKeyboardMarkup(
     [
@@ -132,6 +168,16 @@ async def admin_message_handler(bot: Client, message: Message):
             )
             return
         
+        # چک دسترسی ارسال همگانی
+        if not has_permission(user_id, 'broadcast'):
+            await message.reply_text("❌ شما دسترسی به ارسال پیام همگانی ندارید.")
+            del user_states[user_id]
+            await message.reply_text(
+                "🏠 به صفحه اصلی بازگشتید",
+                reply_markup=ADMIN_KEYBOARD
+            )
+            return
+        
         # ارسال مستقیم پیام (بدون نیاز به ریپلای)
         await start_broadcast(bot, message, message)
         return
@@ -151,6 +197,11 @@ async def admin_message_handler(bot: Client, message: Message):
 
     # پردازش دکمه‌های کیبورد
     if message.text == "📊 مشاهده فایل ها و آمار":
+        # چک دسترسی مشاهده آمار
+        if not has_permission(user_id, 'view_stats'):
+            await message.reply_text("❌ شما دسترسی به مشاهده آمار را ندارید.")
+            return
+            
         total_users = await db.total_users_count()
         total_banned = await db.total_banned_users_count()
         total_files = await db.total_files()
@@ -166,6 +217,11 @@ async def admin_message_handler(bot: Client, message: Message):
         await message.reply_text(stats_text, reply_markup=ADMIN_KEYBOARD)
     
     elif message.text == "🔊 ارسال پیام همگانی":
+        # چک دسترسی ارسال همگانی
+        if not has_permission(user_id, 'broadcast'):
+            await message.reply_text("❌ شما دسترسی به ارسال پیام همگانی ندارید.")
+            return
+            
         user_states[user_id] = "awaiting_broadcast"
         await message.reply_text(
             "📨 **ارسال پیام همگانی**\n\n"
@@ -179,6 +235,11 @@ async def admin_message_handler(bot: Client, message: Message):
         )
     
     elif message.text == "⚙️ تنظیمات":
+        # چک دسترسی تغییر تنظیمات
+        if not has_permission(user_id, 'change_settings'):
+            await message.reply_text("❌ شما دسترسی به تنظیمات را ندارید.")
+            return
+            
         # ایجاد کیبورد اینلاین برای تنظیمات
         settings_keyboard = InlineKeyboardMarkup([
             [
@@ -207,6 +268,11 @@ async def admin_message_handler(bot: Client, message: Message):
         await message.reply_text(settings_text, reply_markup=settings_keyboard)
     
     elif message.text == "🔴 خاموش/روشن کردن ربات":
+        # چک دسترسی خاموش/روشن کردن
+        if not has_permission(user_id, 'toggle_bot'):
+            await message.reply_text("❌ شما دسترسی به خاموش/روشن کردن ربات را ندارید.")
+            return
+            
         # تغییر وضعیت ربات
         bot_status = not bot_status
         save_bot_status(bot_status)  # ذخیره در فایل
@@ -229,6 +295,13 @@ async def admin_message_handler(bot: Client, message: Message):
 async def process_add_admin(bot: Client, message: Message):
     """پردازش افزودن ادمین جدید"""
     user_id = message.from_user.id
+    
+    # چک دسترسی مدیریت ادمین‌ها
+    if not has_permission(user_id, 'manage_admins'):
+        await message.reply_text("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.")
+        del user_states[user_id]
+        return
+        
     target_user = None
     
     try:
@@ -353,6 +426,9 @@ async def show_admin_settings(bot: Client, admin_id: int, callback_query: Callba
         await callback_query.answer("❌ ادمین یافت نشد!", show_alert=True)
         return
     
+    # Get current permissions
+    current_permissions = admin_info.get('permissions', [])
+    
     text = (
         f"**تنظیمات دسترسی های ادمین ({admin_id}) در ربات👇👇**\n\n"
         f"**نام:** {admin_info['name']}\n"
@@ -360,18 +436,24 @@ async def show_admin_settings(bot: Client, admin_id: int, callback_query: Callba
         "**دسترسی‌ها:**"
     )
     
-    permissions_keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("تغییر تنظیمات ربات مشاهده", callback_data=f"perm_toggle_{admin_id}_change_settings")],
-        [InlineKeyboardButton("آمار ربات", callback_data=f"perm_toggle_{admin_id}_view_stats")],
-        [InlineKeyboardButton("ارسال پیام همگانی", callback_data=f"perm_toggle_{admin_id}_broadcast")],
-        [InlineKeyboardButton("حذف فایل ها", callback_data=f"perm_toggle_{admin_id}_delete_files")],
-        [InlineKeyboardButton("خاموش و روشن کردن ربات", callback_data=f"perm_toggle_{admin_id}_toggle_bot")],
-        [InlineKeyboardButton("مدیریت ادمین ها", callback_data=f"perm_toggle_{admin_id}_manage_admins")],
-        [InlineKeyboardButton("دریافت و پاسخ به کامنت ها", callback_data=f"perm_toggle_{admin_id}_manage_comments")],
-        [InlineKeyboardButton("تغییر ادمین به صاحب ربات", callback_data=f"make_owner_{admin_id}")],
-        [InlineKeyboardButton("حذف از لیست ادمین ها", callback_data=f"admin_delete_confirm_{admin_id}")],
-        [InlineKeyboardButton("بازگشت", callback_data="settings_admins")]
+    # Create permission buttons with ✅/❌ icons
+    permission_buttons = []
+    for perm_key, perm_name in PERMISSIONS_LIST:
+        has_permission = 'all' in current_permissions or perm_key in current_permissions
+        icon = "✅" if has_permission else "❌"
+        button_text = f"{icon} {perm_name}"
+        permission_buttons.append([
+            InlineKeyboardButton(button_text, callback_data=f"perm_toggle_{admin_id}_{perm_key}")
+        ])
+    
+    # Add other buttons
+    permission_buttons.extend([
+        [InlineKeyboardButton("🔄 تغییر ادمین به صاحب ربات", callback_data=f"make_owner_{admin_id}")],
+        [InlineKeyboardButton("🗑️ حذف از لیست ادمین ها", callback_data=f"admin_delete_confirm_{admin_id}")],
+        [InlineKeyboardButton("🔙 بازگشت", callback_data="settings_admins")]
     ])
+    
+    permissions_keyboard = InlineKeyboardMarkup(permission_buttons)
     
     try:
         await callback_query.message.edit_text(text, reply_markup=permissions_keyboard)
@@ -405,6 +487,10 @@ async def handle_settings_callback(bot: Client, update: CallbackQuery, data: str
         await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
     
     elif data == "settings_admins":
+        # چک دسترسی مدیریت ادمین‌ها
+        if not has_permission(update.from_user.id, 'manage_admins'):
+            await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
+            return
         await show_admins_list(bot, callback_query=update)
     
     elif data == "settings_users_list":
@@ -430,6 +516,11 @@ async def handle_settings_callback(bot: Client, update: CallbackQuery, data: str
 async def handle_admin_management_callback(bot: Client, update: CallbackQuery, data: str):
     """مدیریت callback‌های مربوط به ادمین‌ها"""
     if data == "add_admin":
+        # چک دسترسی مدیریت ادمین‌ها
+        if not has_permission(update.from_user.id, 'manage_admins'):
+            await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
+            return
+            
         user_states[update.from_user.id] = "adding_admin"
         try:
             await update.message.edit_text(
@@ -459,10 +550,20 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
             await update.answer("❌ ادمین یافت نشد!", show_alert=True)
     
     elif data.startswith("admin_settings_"):
+        # چک دسترسی مدیریت ادمین‌ها
+        if not has_permission(update.from_user.id, 'manage_admins'):
+            await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
+            return
+            
         admin_id = int(data.split("_")[2])
         await show_admin_settings(bot, admin_id, update)
     
     elif data.startswith("admin_delete_"):
+        # چک دسترسی مدیریت ادمین‌ها
+        if not has_permission(update.from_user.id, 'manage_admins'):
+            await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
+            return
+            
         admin_id = int(data.split("_")[2])
         if admin_id == Telegram.OWNER_ID:
             await update.answer("❌ نمی‌توانید صاحب ربات را حذف کنید!", show_alert=True)
@@ -477,6 +578,11 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
             await update.answer("❌ ادمین یافت نشد!", show_alert=True)
     
     elif data.startswith("admin_delete_confirm_"):
+        # چک دسترسی مدیریت ادمین‌ها
+        if not has_permission(update.from_user.id, 'manage_admins'):
+            await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
+            return
+            
         admin_id = int(data.split("_")[3])
         if admin_id == Telegram.OWNER_ID:
             await update.answer("❌ نمی‌توانید صاحب ربات را حذف کنید!", show_alert=True)
@@ -507,6 +613,11 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
                 )
     
     elif data.startswith("perm_toggle_"):
+        # چک دسترسی مدیریت ادمین‌ها
+        if not has_permission(update.from_user.id, 'manage_admins'):
+            await update.answer("❌ شما دسترسی به مدیریت ادمین‌ها را ندارید.", show_alert=True)
+            return
+            
         parts = data.split("_")
         admin_id = int(parts[2])
         permission = parts[3]
@@ -515,16 +626,22 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
             admin_info = admins_data[admin_id]
             permissions = admin_info.get('permissions', [])
             
+            # Toggle permission
             if permission in permissions:
                 permissions.remove(permission)
+                action = "غیرفعال"
             else:
                 permissions.append(permission)
+                action = "فعال"
             
             admin_info['permissions'] = permissions
             admins_data[admin_id] = admin_info
             save_admins(admins_data)
             
-            await update.answer(f"✅ دسترسی {'فعال' if permission in permissions else 'غیرفعال'} شد!", show_alert=True)
+            # Update the settings page to show new status
+            await show_admin_settings(bot, admin_id, update)
+            
+            await update.answer(f"✅ دسترسی {action} شد!", show_alert=True)
         else:
             await update.answer("❌ ادمین یافت نشد!", show_alert=True)
     
@@ -629,11 +746,8 @@ async def start_broadcast(bot: Client, message: Message, broadcast_msg: Message)
             pass
 
 @FileStream.on_message(filters.command("status") & filters.private)
+@require_permission('view_stats')
 async def sts(c: Client, m: Message):
-    if not is_admin(m.from_user.id):
-        await m.reply_text("❌ شما دسترسی به این دستور ندارید.")
-        return
-        
     total_users = await db.total_users_count()
     total_banned = await db.total_banned_users_count()
     total_files = await db.total_files()
@@ -647,11 +761,8 @@ async def sts(c: Client, m: Message):
     )
 
 @FileStream.on_message(filters.command("ban") & filters.private)
+@require_permission('delete_files')
 async def ban_handler(b, m: Message):
-    if not is_admin(m.from_user.id):
-        await m.reply_text("❌ شما دسترسی به این دستور ندارید.")
-        return
-        
     id = m.text.split("/ban ")[-1]
     if not await db.is_user_banned(int(id)):
         try:
@@ -671,11 +782,8 @@ async def ban_handler(b, m: Message):
         await m.reply_text(text=f"`{id}`** قبلاً مسدود شده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
 
 @FileStream.on_message(filters.command("unban") & filters.private)
+@require_permission('delete_files')
 async def unban_handler(b, m: Message):
-    if not is_admin(m.from_user.id):
-        await m.reply_text("❌ شما دسترسی به این دستور ندارید.")
-        return
-        
     id = m.text.split("/unban ")[-1]
     if await db.is_user_banned(int(id)):
         try:
@@ -694,20 +802,14 @@ async def unban_handler(b, m: Message):
         await m.reply_text(text=f"`{id}`** مسدود نشده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
 
 @FileStream.on_message(filters.command("broadcast") & filters.private & filters.reply)
+@require_permission('broadcast')
 async def broadcast_command_handler(c, m):
     """هندلر برای دستور /broadcast با ریپلای"""
-    if not is_admin(m.from_user.id):
-        await m.reply_text("❌ شما دسترسی به این دستور ندارید.")
-        return
-        
     await start_broadcast(c, m, m.reply_to_message)
 
 @FileStream.on_message(filters.command("del") & filters.private)
+@require_permission('delete_files')
 async def delete_handler(c: Client, m: Message):
-    if not is_admin(m.from_user.id):
-        await m.reply_text("❌ شما دسترسی به این دستور ندارید.")
-        return
-        
     file_id = m.text.split(" ")[-1]
     try:
         file_info = await db.get_file(file_id)
