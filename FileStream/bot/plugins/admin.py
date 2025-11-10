@@ -26,17 +26,6 @@ BOT_STATUS_FILE = "bot_status.pkl"
 # فایل برای ذخیره لیست ادمین‌ها
 ADMINS_FILE = "admins.pkl"
 
-# لیست دسترسی‌ها
-PERMISSIONS_LIST = [
-    ('change_settings', 'تغییر تنظیمات ربات'),
-    ('view_stats', 'مشاهده آمار ربات'),
-    ('broadcast', 'ارسال پیام همگانی'),
-    ('delete_files', 'حذف فایل ها'),
-    ('toggle_bot', 'خاموش و روشن کردن ربات'),
-    ('manage_admins', 'مدیریت ادمین ها'),
-    ('manage_comments', 'دریافت و پاسخ به کامنت ها')
-]
-
 # حالت‌های کاربران
 user_states = {}
 
@@ -121,7 +110,7 @@ def require_permission(permission: str):
         return wrapper
     return decorator
 
-# کیبورد مدیریت ادمین (همان حالت قبلی)
+# کیبورد مدیریت ادمین
 ADMIN_KEYBOARD = ReplyKeyboardMarkup(
     [
         [
@@ -414,6 +403,17 @@ async def show_admins_list(bot: Client, message: Message = None, callback_query:
             # اگر ویرایش پیام ممکن نبود، پیام جدید ارسال کن
             await callback_query.message.reply_text(text, reply_markup=admins_keyboard)
 
+# لیست دسترسی‌ها برای Toggle Inline Buttons
+PERMISSIONS_LIST = [
+    ('change_settings', 'تغییر تنظیمات ربات'),
+    ('view_stats', 'مشاهده آمار ربات'),
+    ('broadcast', 'ارسال پیام همگانی'),
+    ('delete_files', 'حذف فایل ها'),
+    ('toggle_bot', 'خاموش و روشن کردن ربات'),
+    ('manage_admins', 'مدیریت ادمین ها'),
+    ('manage_comments', 'دریافت و پاسخ به کامنت ها')
+]
+
 async def show_admin_settings(bot: Client, admin_id: int, callback_query: CallbackQuery):
     """نمایش تنظیمات ادمین با دکمه‌های Toggle اینلاین"""
     admin_info = admins_data.get(admin_id)
@@ -425,17 +425,18 @@ async def show_admin_settings(bot: Client, admin_id: int, callback_query: Callba
     current_permissions = admin_info.get('permissions', [])
     
     text = (
-        f"**تنظیمات دسترسی های ادمین ({admin_id}) در ربات👇👇**\n\n"
-        f"**نام:** {admin_info['name']}\n"
-        f"**یوزرنیم:** @{admin_info['username']}\n\n"
-        "**دسترسی‌ها:**"
+        f"**تنظیمات دسترسی های ادمین**\n\n"
+        f"👤 **نام:** {admin_info['name']}\n"
+        f"📱 **یوزرنیم:** @{admin_info['username']}\n"
+        f"🆔 **آیدی:** `{admin_id}`\n\n"
+        "**دسترسی‌ها:** (برای تغییر کلیک کنید)"
     )
     
     # Create toggle buttons for each permission with ✅/❌
     permission_buttons = []
     for perm_key, perm_name in PERMISSIONS_LIST:
-        has_permission = 'all' in current_permissions or perm_key in current_permissions
-        icon = "✅" if has_permission else "❌"
+        has_perm = 'all' in current_permissions or perm_key in current_permissions
+        icon = "✅" if has_perm else "❌"
         button_text = f"{icon} {perm_name}"
         permission_buttons.append([
             InlineKeyboardButton(button_text, callback_data=f"perm_toggle_{admin_id}_{perm_key}")
@@ -443,8 +444,8 @@ async def show_admin_settings(bot: Client, admin_id: int, callback_query: Callba
     
     # Add control buttons
     permission_buttons.extend([
-        [InlineKeyboardButton("🎯 دسترسی کامل", callback_data=f"perm_all_{admin_id}")],
-        [InlineKeyboardButton("🚫 حذف تمام دسترسی‌ها", callback_data=f"perm_none_{admin_id}")],
+        [InlineKeyboardButton("🎯 فعال کردن همه دسترسی‌ها", callback_data=f"perm_all_{admin_id}")],
+        [InlineKeyboardButton("🚫 غیرفعال کردن همه دسترسی‌ها", callback_data=f"perm_none_{admin_id}")],
         [InlineKeyboardButton("🗑️ حذف ادمین", callback_data=f"admin_delete_confirm_{admin_id}")],
         [InlineKeyboardButton("🔙 بازگشت", callback_data="settings_admins")]
     ])
@@ -469,7 +470,7 @@ async def callback_query_handler(bot: Client, update: CallbackQuery):
     try:
         if data.startswith("settings_"):
             await handle_settings_callback(bot, update, data)
-        elif data.startswith(("add_admin", "admin_", "perm_", "make_owner")):
+        elif data.startswith(("add_admin", "admin_", "perm_")):
             await handle_admin_management_callback(bot, update, data)
         elif data == "N/A":
             await update.answer("این گزینه در دسترس نیست", show_alert=True)
@@ -680,13 +681,8 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
             await update.answer("✅ تمام دسترسی‌ها غیرفعال شد!", show_alert=True)
         else:
             await update.answer("❌ ادمین یافت نشد!", show_alert=True)
-    
-    elif data.startswith("make_owner_"):
-        await update.answer("❌ این قابلیت در حال حاضر فعال نیست!", show_alert=True)
 
-# بقیه توابع بدون تغییر (start_broadcast, command handlers و...) 
-# [کدهای قبلی مربوط به broadcast و command handlers در اینجا قرار می‌گیرد]
-
+# بقیه توابع بدون تغییر
 async def start_broadcast(bot: Client, message: Message, broadcast_msg: Message):
     user_id = message.from_user.id
     
@@ -869,6 +865,3 @@ async def delete_handler(c: Client, m: Message):
 def is_bot_active():
     global bot_status
     return bot_status
-
-# برای export به فایل start.py
-ADMIN_KEYBOARD = ADMIN_KEYBOARD
