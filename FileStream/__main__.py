@@ -10,6 +10,7 @@ from pyrogram import idle
 from FileStream.bot import FileStream
 from FileStream.server import web_server
 from FileStream.bot.clients import initialize_clients
+from FileStream.bot.admin_panel import is_bot_active  # اضافه کردن ایمپورت
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,7 +36,6 @@ async def start_services():
     print()
     print("-------------------- Initializing Telegram Bot --------------------")
 
-
     await FileStream.start()
     bot_info = await FileStream.get_me()
     FileStream.id = bot_info.id
@@ -56,6 +56,7 @@ async def start_services():
     print("                        bot =>> {}".format(bot_info.first_name))
     if bot_info.dc_id:
         print("                        DC ID =>> {}".format(str(bot_info.dc_id)))
+    print("                        Bot Status =>> {}".format("🟢 ACTIVE" if is_bot_active() else "🔴 INACTIVE"))
     print(" URL =>> {}".format(Server.URL))
     print("------------------------------------------------------------------")
     await idle()
