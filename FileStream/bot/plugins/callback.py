@@ -1,281 +1,158 @@
-import datetime
-import math
+import os
 import time
-from FileStream import __version__
-from FileStream.bot import FileStream
-from FileStream.config import Telegram, Server
-from FileStream.utils.translation import LANG, BUTTON
-from FileStream.utils.bot_utils import gen_link, seconds_to_hms
+import string
+import random
+import asyncio
+import aiofiles
+import datetime
+
+from FileStream.utils.broadcast_helper import send_msg
 from FileStream.utils.database import Database
-from FileStream.utils.human_readable import humanbytes
+from FileStream.bot import FileStream
 from FileStream.server.exceptions import FIleNotFound
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from pyrogram.file_id import FileId, FileType, PHOTO_TYPES
+from FileStream.config import Telegram, Server
+from pyrogram import filters, Client
+from pyrogram.types import Message
 from pyrogram.enums.parse_mode import ParseMode
-import logging
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
+broadcast_ids = {}
 
-#---------------------[ START CMD ]---------------------#
-@FileStream.on_callback_query()
-async def cb_data(bot, update: CallbackQuery):
-    usr_cmd = update.data.split("_")
-    
-    try:
-        if usr_cmd[0] == "home":
-            await update.message.edit_text(
-                text=LANG.START_TEXT.format(update.from_user.mention, FileStream.username),
-                disable_web_page_preview=True,
-                reply_markup=BUTTON.START_BUTTONS
-            )
-        elif usr_cmd[0] == "help":
-            await update.message.edit_text(
-                text=LANG.HELP_TEXT.format(Telegram.OWNER_ID),
-                disable_web_page_preview=True,
-                reply_markup=BUTTON.HELP_BUTTONS
-            )
-        elif usr_cmd[0] == "about":
-            await update.message.edit_text(
-                text=LANG.ABOUT_TEXT.format(FileStream.fname, __version__),
-                disable_web_page_preview=True,
-                reply_markup=BUTTON.ABOUT_BUTTONS
-            )
 
-        #---------------------[ MY FILES CMD ]---------------------#
+@FileStream.on_message(filters.command("status") & filters.private & filters.user(Telegram.OWNER_ID))
+async def sts(c: Client, m: Message):
+    await m.reply_text(text=f"""**👥 کل کاربران:** `{await db.total_users_count()}`
+**🚫 کاربران مسدود شده:** `{await db.total_banned_users_count()}`
+**🔗 لینک‌های تولید شده: ** `{await db.total_files()}`"""
+                       , parse_mode=ParseMode.MARKDOWN, quote=True)
 
-        elif usr_cmd[0] == "N/A":
-            await update.answer("N/A", True)
-        elif usr_cmd[0] == "close":
-            await update.message.delete()
-        elif usr_cmd[0] == "msgdelete":
-            await update.message.edit_caption(
-            caption= "**آیا می‌خواهید فایل را حذف کنید؟**\n\n",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("بله", callback_data=f"msgdelyes_{usr_cmd[1]}_{usr_cmd[2]}"), InlineKeyboardButton("خیر", callback_data=f"myfile_{usr_cmd[1]}_{usr_cmd[2]}")]])
-        )
-        elif usr_cmd[0] == "msgdelyes":
-            await delete_user_file(usr_cmd[1], int(usr_cmd[2]), update)
-            return
-        elif usr_cmd[0] == "msgdelpvt":
-            await update.message.edit_caption(
-            caption= "**آیا می‌خواهید فایل را حذف کنید؟**\n\n",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("بله", callback_data=f"msgdelpvtyes_{usr_cmd[1]}"), InlineKeyboardButton("خیر", callback_data=f"mainstream_{usr_cmd[1]}")]])
-        )
-        elif usr_cmd[0] == "msgdelpvtyes":
-            await delete_user_filex(usr_cmd[1], update)
-            return
 
-        elif usr_cmd[0] == "mainstream":
-            _id = usr_cmd[1]
-            reply_markup, stream_text = await gen_link(_id=_id)
-            await update.message.edit_text(
-                text=stream_text,
-                parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True,
-                reply_markup=reply_markup,
-            )
-
-        elif usr_cmd[0] == "userfiles":
-            file_list, total_files = await gen_file_list_button(int(usr_cmd[1]), update.from_user.id)
-            await update.message.edit_caption(
-                caption="🗂 تعداد کل فایل ها: {}".format(total_files),
-                reply_markup=InlineKeyboardMarkup(file_list)
+@FileStream.on_message(filters.command("ban") & filters.private & filters.user(Telegram.OWNER_ID))
+async def sts(b, m: Message):
+    id = m.text.split("/ban ")[-1]
+    if not await db.is_user_banned(int(id)):
+        try:
+            await db.ban_user(int(id))
+            await db.delete_user(int(id))
+            await m.reply_text(text=f"`{id}`** مسدود شده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
+            if not str(id).startswith('-100'):
+                await b.send_message(
+                    chat_id=id,
+                    text="**حساب کاربری شما مسدود شده است**",
+                    parse_mode=ParseMode.MARKDOWN,
+                    disable_web_page_preview=True
                 )
-        elif usr_cmd[0] == "myfile":
-            await gen_file_menu(usr_cmd[1], usr_cmd[2], update)
-            return
-        elif usr_cmd[0] == "sendfile":
-            try:
-                myfile = await db.get_file(usr_cmd[1])
-                file_name = myfile['file_name']
-                await update.answer(f"در حال ارسال فایل {file_name}")
-                await update.message.reply_cached_media(myfile['file_id'], caption=f'**{file_name}**')
-            except FIleNotFound:
-                await update.answer("❌ فایل منقضی شده یا وجود ندارد!", show_alert=True)
-                # به روزرسانی لیست فایل‌ها
-                file_list, total_files = await gen_file_list_button(1, update.from_user.id)
-                await update.message.edit_caption(
-                    caption="🗂 تعداد کل فایل ها: {}\n\n⚠️ برخی فایل‌ها منقضی شده و حذف شدند".format(total_files),
-                    reply_markup=InlineKeyboardMarkup(file_list)
+        except Exception as e:
+            await m.reply_text(text=f"**عملیات با خطا مواجه شد: {e}** ", parse_mode=ParseMode.MARKDOWN, quote=True)
+    else:
+        await m.reply_text(text=f"`{id}`** قبلاً مسدود شده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
+
+
+@FileStream.on_message(filters.command("unban") & filters.private & filters.user(Telegram.OWNER_ID))
+async def sts(b, m: Message):
+    id = m.text.split("/unban ")[-1]
+    if await db.is_user_banned(int(id)):
+        try:
+            await db.unban_user(int(id))
+            await m.reply_text(text=f"`{id}`** مسدودیت با موفقیت برداشته شد** ", parse_mode=ParseMode.MARKDOWN, quote=True)
+            if not str(id).startswith('-100'):
+                await b.send_message(
+                    chat_id=id,
+                    text="**مسدودیت شما برداشته شد. می‌توانید از ربات استفاده کنید**",
+                    parse_mode=ParseMode.MARKDOWN,
+                    disable_web_page_preview=True
                 )
-        else:
-            await update.message.delete()
-    
-    except FIleNotFound:
-        # هندل کردن خطای فایل پیدا نشد
-        await update.answer("❌ این فایل منقضی شده و حذف شده است!", show_alert=True)
-        
-        # اگر در حال مشاهده لیست فایل‌ها بودیم، لیست را به روز کنیم
-        if usr_cmd[0] in ["myfile", "sendfile"]:
-            file_list, total_files = await gen_file_list_button(1, update.from_user.id)
-            await update.message.edit_caption(
-                caption="🗂 تعداد کل فایل ها: {}\n\n⚠️ این فایل منقضی شده و حذف شد".format(total_files),
-                reply_markup=InlineKeyboardMarkup(file_list)
+        except Exception as e:
+            await m.reply_text(text=f"** عملیات با خطا مواجه شد: {e}**", parse_mode=ParseMode.MARKDOWN, quote=True)
+    else:
+        await m.reply_text(text=f"`{id}`** مسدود نشده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
+
+
+@FileStream.on_message(filters.command("broadcast") & filters.private & filters.user(Telegram.OWNER_ID) & filters.reply)
+async def broadcast_(c, m):
+    all_users = await db.get_all_users()
+    broadcast_msg = m.reply_to_message
+    while True:
+        broadcast_id = ''.join([random.choice(string.ascii_letters) for i in range(3)])
+        if not broadcast_ids.get(broadcast_id):
+            break
+    out = await m.reply_text(
+        text=f"Broadcast initiated! You will be notified with log file when all the users are notified."
+    )
+    start_time = time.time()
+    total_users = await db.total_users_count()
+    done = 0
+    failed = 0
+    success = 0
+    broadcast_ids[broadcast_id] = dict(
+        total=total_users,
+        current=done,
+        failed=failed,
+        success=success
+    )
+    async with aiofiles.open('broadcast.txt', 'w') as broadcast_log_file:
+        async for user in all_users:
+            sts, msg = await send_msg(
+                user_id=int(user['id']),
+                message=broadcast_msg
             )
-    
-    except Exception as e:
-        logging.error(f"Error in callback: {e}")
-        await update.answer("❌ خطایی رخ داد!", show_alert=True)
-
-
-
-    #---------------------[ MY FILES FUNC ]---------------------#
-
-async def gen_file_list_button(file_list_no: int, user_id: int):
-    try:
-        file_range=[file_list_no*10-10+1, file_list_no*10]
-        user_files, total_files=await db.find_files(user_id, file_range)
-
-        file_list=[]
-        async for x in user_files:
-            # محاسبه زمان باقی‌مانده برای هر فایل
-            create_time = x['time']
-            expire_time = create_time + Telegram.EXPIRE_TIME
-            remaining_seconds = int(expire_time - time.time())
-            
-            if remaining_seconds <= 0:
-                remaining_text = "❌ منقضی شده"
+            if msg is not None:
+                await broadcast_log_file.write(msg)
+            if sts == 200:
+                success += 1
             else:
-                remaining_text = f"⏰ {seconds_to_hms(remaining_seconds)}"
-            
-            # اضافه کردن زمان باقی‌مانده به نام فایل
-            file_name = x["file_name"]
-            if len(file_name) > 20:
-                file_name = file_name[:20] + "..."
-            
-            button_text = f"{file_name}\n{remaining_text}"
-            file_list.append([InlineKeyboardButton(button_text, callback_data=f"myfile_{x['_id']}_{file_list_no}")])
-        
-        if total_files > 10:
-            file_list.append(
-                    [InlineKeyboardButton("◄", callback_data="{}".format("userfiles_"+str(file_list_no-1) if file_list_no > 1 else 'N/A')),
-                     InlineKeyboardButton(f"{file_list_no}/{math.ceil(total_files/10)}", callback_data="N/A"),
-                     InlineKeyboardButton("►", callback_data="{}".format("userfiles_"+str(file_list_no+1) if total_files > file_list_no*10 else 'N/A'))]
-            )
-        if not file_list:
-            file_list.append(
-                    [InlineKeyboardButton("📭 خالی", callback_data="N/A")])
-        file_list.append([InlineKeyboardButton("✖️ بستن", callback_data="close")])
-        return file_list, total_files
-    
-    except Exception as e:
-        logging.error(f"Error in gen_file_list_button: {e}")
-        return [[InlineKeyboardButton("❌ خطا در بارگذاری", callback_data="N/A")]], 0
+                failed += 1
+            if sts == 400:
+                await db.delete_user(user['id'])
+            done += 1
+            if broadcast_ids.get(broadcast_id) is None:
+                break
+            else:
+                broadcast_ids[broadcast_id].update(
+                    dict(
+                        current=done,
+                        failed=failed,
+                        success=success
+                    )
+                )
+                try:
+                    await out.edit_text(f"Broadcast Status\n\ncurrent: {done}\nfailed:{failed}\nsuccess: {success}")
+                except:
+                    pass
+    if broadcast_ids.get(broadcast_id):
+        broadcast_ids.pop(broadcast_id)
+    completed_in = datetime.timedelta(seconds=int(time.time() - start_time))
+    await asyncio.sleep(3)
+    await out.delete()
+    if failed == 0:
+        await m.reply_text(
+            text=f"broadcast completed in `{completed_in}`\n\nTotal users {total_users}.\nTotal done {done}, {success} success and {failed} failed.",
+            quote=True
+        )
+    else:
+        await m.reply_document(
+            document='broadcast.txt',
+            caption=f"broadcast completed in `{completed_in}`\n\nTotal users {total_users}.\nTotal done {done}, {success} success and {failed} failed.",
+            quote=True
+        )
+    os.remove('broadcast.txt')
 
-async def gen_file_menu(_id, file_list_no, update: CallbackQuery):
+
+@FileStream.on_message(filters.command("del") & filters.private & filters.user(Telegram.OWNER_ID))
+async def sts(c: Client, m: Message):
+    file_id = m.text.split(" ")[-1]
     try:
-        myfile_info=await db.get_file(_id)
+        file_info = await db.get_file(file_id)
     except FIleNotFound:
-        await update.answer("❌ فایل منقضی شده یا وجود ندارد!", show_alert=True)
-        
-        # برگشت به لیست فایل‌ها
-        file_list, total_files = await gen_file_list_button(file_list_no, update.from_user.id)
-        await update.message.edit_caption(
-            caption="🗂 تعداد کل فایل ها: {}\n\n⚠️ این فایل منقضی شده و حذف شد".format(total_files),
-            reply_markup=InlineKeyboardMarkup(file_list)
+        await m.reply_text(
+            text=f"**فایل قبلاً حذف شده است**",
+            quote=True
         )
         return
-
-    file_id=FileId.decode(myfile_info['file_id'])
-
-    if file_id.file_type in PHOTO_TYPES:
-        file_type = "Image"
-    elif file_id.file_type == FileType.VOICE:
-        file_type = "Voice"
-    elif file_id.file_type in (FileType.VIDEO, FileType.ANIMATION, FileType.VIDEO_NOTE):
-        file_type = "Video"
-    elif file_id.file_type == FileType.DOCUMENT:
-        file_type = "Document"
-    elif file_id.file_type == FileType.STICKER:
-        file_type = "Sticker"
-    elif file_id.file_type == FileType.AUDIO:
-        file_type = "Audio"
-    else:
-        file_type = "Unknown"
-
-    # محاسبه زمان باقی‌مانده
-    create_time = myfile_info['time']
-    expire_time = create_time + Telegram.EXPIRE_TIME
-    remaining_seconds = int(expire_time - time.time())
-    
-    if remaining_seconds <= 0:
-        remaining_readable = "❌ منقضی شده"
-        expire_status = "❌ منقضی شده"
-    else:
-        remaining_readable = seconds_to_hms(remaining_seconds)
-        expire_status = f"⏰ {remaining_readable}"
-
-    page_link = f"{Server.URL}watch/{myfile_info['_id']}"
-    stream_link = f"{Server.URL}dl/{myfile_info['_id']}"
-    if "video" in file_type.lower():
-        MYFILES_BUTTONS = InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton("🖥️ پخش آنلاین", url=page_link), InlineKeyboardButton("📥 دانلود", url=stream_link)],
-                [InlineKeyboardButton("📂 دریافت فایل", callback_data=f"sendfile_{myfile_info['_id']}"),
-                 InlineKeyboardButton("🗑 حذف فایل", callback_data=f"msgdelete_{myfile_info['_id']}_{file_list_no}")],
-                [InlineKeyboardButton("🔙 برگشت", callback_data="userfiles_{}".format(file_list_no))]
-            ]
-        )
-    else:
-        MYFILES_BUTTONS = InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton("📥 دانلود", url=stream_link)],
-                [InlineKeyboardButton("📂 دریافت فایل", callback_data=f"sendfile_{myfile_info['_id']}"),
-                 InlineKeyboardButton("🗑 حذف فایل", callback_data=f"msgdelete_{myfile_info['_id']}_{file_list_no}")],
-                [InlineKeyboardButton("🔙 برگشت", callback_data="userfiles_{}".format(file_list_no))]
-            ]
-        )
-
-    TiMe = myfile_info['time']
-    if type(TiMe) == float:
-        date = datetime.datetime.fromtimestamp(TiMe)
-    
-    await update.edit_message_caption(
-        caption="**🪪 نام فایل :** `{}`\n**📦 حجم فایل :** `{}`\n**🗂 نوع فایل :** `{}`\n**⏰ وضعیت انقضا :** `{}`\n**📅 تاریخ ایجاد :** `{}`".format(
-            myfile_info['file_name'],
-            humanbytes(int(myfile_info['file_size'])),
-            file_type,
-            expire_status,
-            TiMe if isinstance(TiMe,str) else date.date()
-        ),
-        reply_markup=MYFILES_BUTTONS 
+    await db.delete_one_file(file_info['_id'])
+    await db.count_links(file_info['user_id'], "-")
+    await m.reply_text(
+        text=f"**فایل با موفقیت حذف شد !** ",
+        quote=True
     )
 
-
-async def delete_user_file(_id, file_list_no: int, update:CallbackQuery):
-    try:
-        myfile_info=await db.get_file(_id)
-    except FIleNotFound:
-        await update.answer("❌ فایل قبلاً حذف شده است!", show_alert=True)
-        
-        # برگشت به لیست فایل‌ها
-        file_list, total_files = await gen_file_list_button(file_list_no, update.from_user.id)
-        await update.message.edit_caption(
-            caption="🗂 تعداد کل فایل ها: {}\n\n⚠️ این فایل قبلاً حذف شده است".format(total_files),
-            reply_markup=InlineKeyboardMarkup(file_list)
-        )
-        return
-
-    await db.delete_one_file(myfile_info['_id'])
-    await db.count_links(update.from_user.id, "-")
-    await update.message.edit_caption(
-            caption= "**✅ فایل با موفقیت حذف شد!**",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 برگشت", callback_data=f"userfiles_{file_list_no}")]])
-        )
-
-async def delete_user_filex(_id, update:CallbackQuery):
-    try:
-        myfile_info=await db.get_file(_id)
-    except FIleNotFound:
-        await update.answer("❌ فایل قبلاً حذف شده است!", show_alert=True)
-        await update.message.edit_caption(
-            caption= "**❌ فایل قبلاً حذف شده است!**\n\n",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✖️ بستن", callback_data=f"close")]])
-        )
-        return
-
-    await db.delete_one_file(myfile_info['_id'])
-    await db.count_links(update.from_user.id, "-")
-    await update.message.edit_caption(
-            caption= "**✅ فایل با موفقیت حذف شد!**\n\n",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✖️ بستن", callback_data=f"close")]])
-        )
