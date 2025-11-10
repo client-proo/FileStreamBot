@@ -16,7 +16,6 @@ from FileStream.config import Telegram, Server
 from pyrogram import filters, Client
 from pyrogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from pyrogram.enums.parse_mode import ParseMode
-from FileStream.bot.plugins.admin import is_bot_active
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 broadcast_ids = {}
