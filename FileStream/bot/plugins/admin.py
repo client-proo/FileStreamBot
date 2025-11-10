@@ -265,10 +265,9 @@ async def process_add_admin(bot: Client, message: Message):
             
             # نمایش پیام موفقیت
             success_text = (
-                f"✅ **ادمین با موفقیت اضافه شد!**\n\n"
+                "✅ **ادمین با موفقیت افزوده شد.**\n\n"
                 f"👤 **نام:** {target_user.first_name or 'بدون نام'}\n"
-                f"🆔 **آیدی:** `{target_user.id}`\n"
-                f"📱 **یوزرنیم:** @{target_user.username or 'ندارد'}"
+                f"🆔 **آیدی:** `{target_user.id}`"
             )
             
             await message.reply_text(success_text)
@@ -318,7 +317,11 @@ async def show_admins_list(bot: Client, message: Message = None, callback_query:
     if message:
         await message.reply_text(text, reply_markup=admins_keyboard)
     elif callback_query:
-        await callback_query.message.edit_text(text, reply_markup=admins_keyboard)
+        try:
+            await callback_query.message.edit_text(text, reply_markup=admins_keyboard)
+        except Exception as e:
+            # اگر ویرایش پیام ممکن نبود، پیام جدید ارسال کن
+            await callback_query.message.reply_text(text, reply_markup=admins_keyboard)
 
 async def show_admin_settings(bot: Client, admin_id: int, callback_query: CallbackQuery):
     """نمایش تنظیمات ادمین"""
@@ -347,7 +350,10 @@ async def show_admin_settings(bot: Client, admin_id: int, callback_query: Callba
         [InlineKeyboardButton("بازگشت", callback_data="settings_admins")]
     ])
     
-    await callback_query.message.edit_text(text, reply_markup=permissions_keyboard)
+    try:
+        await callback_query.message.edit_text(text, reply_markup=permissions_keyboard)
+    except Exception as e:
+        await callback_query.message.reply_text(text, reply_markup=permissions_keyboard)
 
 # هندلر برای callback_query های تنظیمات
 @FileStream.on_callback_query(filters.regex("^settings_"))
@@ -367,11 +373,18 @@ async def settings_callback_handler(bot: Client, update: CallbackQuery):
         await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
     
     elif data == "settings_back":
-        await update.message.edit_text(
-            "🏠 **صفحه اصلی**\n\n"
-            "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
-            reply_markup=ADMIN_KEYBOARD
-        )
+        try:
+            await update.message.edit_text(
+                "🏠 **صفحه اصلی**\n\n"
+                "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
+                reply_markup=ADMIN_KEYBOARD
+            )
+        except Exception as e:
+            await update.message.reply_text(
+                "🏠 **صفحه اصلی**\n\n"
+                "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
+                reply_markup=ADMIN_KEYBOARD
+            )
 
 # هندلر برای مدیریت ادمین‌ها
 @FileStream.on_callback_query(filters.regex("^(add_admin|admin_|perm_|make_owner)"))
@@ -380,14 +393,24 @@ async def admin_management_handler(bot: Client, update: CallbackQuery):
     
     if data == "add_admin":
         user_states[update.from_user.id] = "adding_admin"
-        await update.message.edit_text(
-            "➕ **افزودن ادمین جدید**\n\n"
-            "برای افزودن ادمین، یکی از روش‌های زیر را استفاده کنید:\n"
-            "- یک پیام از کاربر مورد نظر فوروارد کنید.\n"
-            "- یوزرنیم کاربر را با @ ارسال کنید.\n"
-            "- آیدی عددی کاربر را ارسال کنید.\n\n"
-            "برای لغو /cancel را بزنید."
-        )
+        try:
+            await update.message.edit_text(
+                "➕ **افزودن ادمین جدید**\n\n"
+                "برای افزودن ادمین، یکی از روش‌های زیر را استفاده کنید:\n"
+                "- یک پیام از کاربر مورد نظر فوروارد کنید.\n"
+                "- یوزرنیم کاربر را با @ ارسال کنید.\n"
+                "- آیدی عددی کاربر را ارسال کنید.\n\n"
+                "برای لغو /cancel را بزنید."
+            )
+        except Exception as e:
+            await update.message.reply_text(
+                "➕ **افزودن ادمین جدید**\n\n"
+                "برای افزودن ادمین، یکی از روش‌های زیر را استفاده کنید:\n"
+                "- یک پیام از کاربر مورد نظر فوروارد کنید.\n"
+                "- یوزرنیم کاربر را با @ ارسال کنید.\n"
+                "- آیدی عددی کاربر را ارسال کنید.\n\n"
+                "برای لغو /cancel را بزنید."
+            )
     
     elif data.startswith("admin_info_"):
         admin_id = int(data.split("_")[2])
@@ -428,13 +451,22 @@ async def admin_management_handler(bot: Client, update: CallbackQuery):
         
         admin_info = admins_data.get(admin_id)
         if admin_info:
-            await update.message.edit_text(
-                f"⚠️ **آیا مطمئن هستید که می‌خواهید ادمین زیر را حذف کنید؟**\n\n"
-                f"🆔 آیدی: `{admin_id}`\n"
-                f"👤 نام: {admin_info['name']}\n"
-                f"📱 یوزرنیم: @{admin_info['username']}",
-                reply_markup=confirm_keyboard
-            )
+            try:
+                await update.message.edit_text(
+                    f"⚠️ **آیا مطمئن هستید که می‌خواهید ادمین زیر را حذف کنید؟**\n\n"
+                    f"🆔 آیدی: `{admin_id}`\n"
+                    f"👤 نام: {admin_info['name']}\n"
+                    f"📱 یوزرنیم: @{admin_info['username']}",
+                    reply_markup=confirm_keyboard
+                )
+            except Exception as e:
+                await update.message.reply_text(
+                    f"⚠️ **آیا مطمئن هستید که می‌خواهید ادمین زیر را حذف کنید؟**\n\n"
+                    f"🆔 آیدی: `{admin_id}`\n"
+                    f"👤 نام: {admin_info['name']}\n"
+                    f"📱 یوزرنیم: @{admin_info['username']}",
+                    reply_markup=confirm_keyboard
+                )
     
     elif data.startswith("perm_toggle_"):
         parts = data.split("_")
