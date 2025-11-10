@@ -12,12 +12,94 @@ from FileStream.bot import FileStream
 from FileStream.server.exceptions import FIleNotFound
 from FileStream.config import Telegram, Server
 from pyrogram import filters, Client
-from pyrogram.types import Message
+from pyrogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from pyrogram.enums.parse_mode import ParseMode
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 broadcast_ids = {}
 
+# وضعیت ربات (در حافظه)
+bot_status = True
+
+# کیبورد مدیریت ادمین
+ADMIN_KEYBOARD = ReplyKeyboardMarkup(
+    [
+        [
+            KeyboardButton("📊 مشاهده فایل ها و آمار"),
+            KeyboardButton("🔊 ارسال پیام همگانی")
+        ],
+        [
+            KeyboardButton("⚙️ تنظیمات"), 
+            KeyboardButton("🔴 خاموش/روشن کردن ربات")
+        ]
+    ],
+    resize_keyboard=True,
+    selective=True
+)
+
+@FileStream.on_message(filters.command("panel") & filters.private & filters.user(Telegram.OWNER_ID))
+async def admin_panel_handler(bot: Client, message: Message):
+    await message.reply_text(
+        "🛠 **پنل مدیریت ادمین**\n\n"
+        "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
+        reply_markup=ADMIN_KEYBOARD
+    )
+
+@FileStream.on_message(filters.private & filters.text & filters.user(Telegram.OWNER_ID))
+async def admin_buttons_handler(bot: Client, message: Message):
+    global bot_status
+    
+    if message.text == "📊 مشاهده فایل ها و آمار":
+        total_users = await db.total_users_count()
+        total_banned = await db.total_banned_users_count()
+        total_files = await db.total_files()
+        
+        stats_text = (
+            "📊 **آمار کلی ربات:**\n\n"
+            f"👥 کل کاربران: `{total_users}`\n"
+            f"🚫 کاربران مسدود شده: `{total_banned}`\n" 
+            f"📁 کل فایل‌ها: `{total_files}`\n"
+            f"🔌 وضعیت ربات: `{'🟢 روشن' if bot_status else '🔴 خاموش'}`"
+        )
+        
+        await message.reply_text(stats_text, reply_markup=ADMIN_KEYBOARD)
+    
+    elif message.text == "🔊 ارسال پیام همگانی":
+        await message.reply_text(
+            "📨 **ارسال پیام همگانی**\n\n"
+            "لطفا پیام مورد نظر خود را به عنوان ریپلای ارسال کنید...\n\n"
+            "❕ برای لغو عملیات از دستور /cancel استفاده کنید.",
+            reply_markup=ReplyKeyboardMarkup([[KeyboardButton("🔙 بازگشت")]], resize_keyboard=True)
+        )
+    
+    elif message.text == "⚙️ تنظیمات":
+        settings_text = (
+            "⚙️ **تنظیمات ربات**\n\n"
+            f"⏰ زمان انقضای لینک‌ها: `{Telegram.EXPIRE_TIME} ثانیه`\n"
+            f"🚫 زمان ضد اسپم: `{Telegram.ANTI_SPAM_TIME} ثانیه`\n"
+            f"👥 کاربران مجاز: `{len(Telegram.AUTH_USERS) if Telegram.AUTH_USERS else 'همه'}`\n"
+            f"📢 عضویت اجباری: `{'فعال' if Telegram.FORCE_SUB else 'غیرفعال'}`\n"
+            f"🔌 وضعیت ربات: `{'🟢 روشن' if bot_status else '🔴 خاموش'}`"
+        )
+        
+        await message.reply_text(settings_text, reply_markup=ADMIN_KEYBOARD)
+    
+    elif message.text == "🔴 خاموش/روشن کردن ربات":
+        global bot_status
+        bot_status = not bot_status
+        
+        if bot_status:
+            status_text = "🟢 **ربات روشن شد**\n\nکاربران اکنون می‌توانند فایل‌ها را دریافت کنند."
+        else:
+            status_text = "🔴 **ربات خاموش شد**\n\nکاربران دیگر نمی‌توانند فایل‌ها را دریافت کنند."
+        
+        await message.reply_text(status_text, reply_markup=ADMIN_KEYBOARD)
+    
+    elif message.text == "🔙 بازگشت":
+        await message.reply_text(
+            "🔙 **بازگشت به صفحه اصلی**",
+            reply_markup=ADMIN_KEYBOARD
+        )
 
 @FileStream.on_message(filters.command("status") & filters.private & filters.user(Telegram.OWNER_ID))
 async def sts(c: Client, m: Message):
@@ -156,3 +238,6 @@ async def sts(c: Client, m: Message):
         quote=True
     )
 
+# تابع برای چک کردن وضعیت ربات (برای استفاده در سایر فایل‌ها)
+def is_bot_active():
+    return bot_status
