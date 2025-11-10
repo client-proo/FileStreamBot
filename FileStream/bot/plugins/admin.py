@@ -52,16 +52,7 @@ def load_admins():
     try:
         if Path(ADMINS_FILE).exists():
             with open(ADMINS_FILE, 'rb') as f:
-                admins = pickle.load(f)
-                # اطمینان از وجود صاحب ربات در لیست ادمین‌ها
-                if Telegram.OWNER_ID not in admins:
-                    admins[Telegram.OWNER_ID] = {
-                        'name': 'صاحب ربات',
-                        'username': 'owner',
-                        'permissions': ['all']
-                    }
-                    save_admins(admins)
-                return admins
+                return pickle.load(f)
     except:
         pass
     # اگر فایل وجود ندارد، صاحب ربات را به عنوان ادمین اصلی اضافه کن
@@ -94,16 +85,6 @@ def is_admin(user_id: int) -> bool:
     """چک کردن آیا کاربر ادمین است یا نه"""
     return user_id == Telegram.OWNER_ID or user_id in admins_data
 
-# تابع برای چک کردن دسترسی کامل ادمین
-def has_full_access(user_id: int) -> bool:
-    """چک کردن آیا کاربر دسترسی کامل دارد"""
-    if user_id == Telegram.OWNER_ID:
-        return True
-    if user_id in admins_data:
-        admin_info = admins_data[user_id]
-        return 'all' in admin_info.get('permissions', [])
-    return False
-
 # کیبورد مدیریت ادمین
 ADMIN_KEYBOARD = ReplyKeyboardMarkup(
     [
@@ -120,16 +101,24 @@ ADMIN_KEYBOARD = ReplyKeyboardMarkup(
     selective=True
 )
 
-@FileStream.on_message(filters.command("panel") & filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)))
+@FileStream.on_message(filters.command("panel") & filters.private)
 async def admin_panel_handler(bot: Client, message: Message):
+    if not is_admin(message.from_user.id):
+        await message.reply_text("❌ شما دسترسی به پنل مدیریت ندارید.")
+        return
+        
     await message.reply_text(
         "🏠 **صفحه اصلی**\n\n"
         "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
         reply_markup=ADMIN_KEYBOARD
     )
 
-@FileStream.on_message(filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)))
+@FileStream.on_message(filters.private)
 async def admin_message_handler(bot: Client, message: Message):
+    # چک کردن آیا کاربر ادمین است
+    if not is_admin(message.from_user.id):
+        return
+        
     global bot_status
     user_id = message.from_user.id
     
@@ -177,7 +166,6 @@ async def admin_message_handler(bot: Client, message: Message):
         await message.reply_text(stats_text, reply_markup=ADMIN_KEYBOARD)
     
     elif message.text == "🔊 ارسال پیام همگانی":
-        # هر ادمینی می‌تواند پیام همگانی ارسال کند
         user_states[user_id] = "awaiting_broadcast"
         await message.reply_text(
             "📨 **ارسال پیام همگانی**\n\n"
@@ -191,7 +179,6 @@ async def admin_message_handler(bot: Client, message: Message):
         )
     
     elif message.text == "⚙️ تنظیمات":
-        # هر ادمینی می‌تواند تنظیمات را ببیند
         # ایجاد کیبورد اینلاین برای تنظیمات
         settings_keyboard = InlineKeyboardMarkup([
             [
@@ -220,7 +207,6 @@ async def admin_message_handler(bot: Client, message: Message):
         await message.reply_text(settings_text, reply_markup=settings_keyboard)
     
     elif message.text == "🔴 خاموش/روشن کردن ربات":
-        # هر ادمینی می‌تواند ربات را خاموش/روشن کند
         # تغییر وضعیت ربات
         bot_status = not bot_status
         save_bot_status(bot_status)  # ذخیره در فایل
@@ -377,15 +363,28 @@ async def show_admin_settings(bot: Client, admin_id: int, callback_query: Callba
         await callback_query.message.reply_text(text, reply_markup=permissions_keyboard)
 
 # هندلر برای callback_query های تنظیمات
-@FileStream.on_callback_query(filters.regex("^settings_"))
-async def settings_callback_handler(bot: Client, update: CallbackQuery):
-    # فقط ادمین‌ها می‌توانند تنظیمات را تغییر دهند
+@FileStream.on_callback_query()
+async def callback_query_handler(bot: Client, update: CallbackQuery):
+    # چک کردن آیا کاربر ادمین است
     if not is_admin(update.from_user.id):
-        await update.answer("❌ فقط ادمین‌ها می‌توانند تنظیمات را تغییر دهند.", show_alert=True)
+        await update.answer("❌ شما دسترسی به این بخش ندارید.", show_alert=True)
         return
         
     data = update.data
     
+    try:
+        if data.startswith("settings_"):
+            await handle_settings_callback(bot, update, data)
+        elif data.startswith(("add_admin", "admin_", "perm_", "make_owner")):
+            await handle_admin_management_callback(bot, update, data)
+        elif data == "N/A":
+            await update.answer("این گزینه در دسترس نیست", show_alert=True)
+    except Exception as e:
+        print(f"Error in callback handler: {e}")
+        await update.answer("❌ خطا در پردازش درخواست", show_alert=True)
+
+async def handle_settings_callback(bot: Client, update: CallbackQuery, data: str):
+    """مدیریت callback‌های مربوط به تنظیمات"""
     if data == "settings_force_sub":
         await update.answer("🔄 این قابلیت به زودی اضافه خواهد شد", show_alert=True)
     
@@ -412,16 +411,8 @@ async def settings_callback_handler(bot: Client, update: CallbackQuery):
                 reply_markup=ADMIN_KEYBOARD
             )
 
-# هندلر برای مدیریت ادمین‌ها
-@FileStream.on_callback_query(filters.regex("^(add_admin|admin_|perm_|make_owner)"))
-async def admin_management_handler(bot: Client, update: CallbackQuery):
-    # فقط ادمین‌ها می‌توانند ادمین‌ها را مدیریت کنند
-    if not is_admin(update.from_user.id):
-        await update.answer("❌ فقط ادمین‌ها می‌توانند ادمین‌ها را مدیریت کند.", show_alert=True)
-        return
-        
-    data = update.data
-    
+async def handle_admin_management_callback(bot: Client, update: CallbackQuery, data: str):
+    """مدیریت callback‌های مربوط به ادمین‌ها"""
     if data == "add_admin":
         user_states[update.from_user.id] = "adding_admin"
         try:
@@ -621,8 +612,12 @@ async def start_broadcast(bot: Client, message: Message, broadcast_msg: Message)
         except:
             pass
 
-@FileStream.on_message(filters.command("status") & filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)))
+@FileStream.on_message(filters.command("status") & filters.private)
 async def sts(c: Client, m: Message):
+    if not is_admin(m.from_user.id):
+        await m.reply_text("❌ شما دسترسی به این دستور ندارید.")
+        return
+        
     total_users = await db.total_users_count()
     total_banned = await db.total_banned_users_count()
     total_files = await db.total_files()
@@ -635,8 +630,12 @@ async def sts(c: Client, m: Message):
         quote=True
     )
 
-@FileStream.on_message(filters.command("ban") & filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)))
+@FileStream.on_message(filters.command("ban") & filters.private)
 async def ban_handler(b, m: Message):
+    if not is_admin(m.from_user.id):
+        await m.reply_text("❌ شما دسترسی به این دستور ندارید.")
+        return
+        
     id = m.text.split("/ban ")[-1]
     if not await db.is_user_banned(int(id)):
         try:
@@ -655,8 +654,12 @@ async def ban_handler(b, m: Message):
     else:
         await m.reply_text(text=f"`{id}`** قبلاً مسدود شده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
 
-@FileStream.on_message(filters.command("unban") & filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)))
+@FileStream.on_message(filters.command("unban") & filters.private)
 async def unban_handler(b, m: Message):
+    if not is_admin(m.from_user.id):
+        await m.reply_text("❌ شما دسترسی به این دستور ندارید.")
+        return
+        
     id = m.text.split("/unban ")[-1]
     if await db.is_user_banned(int(id)):
         try:
@@ -674,13 +677,21 @@ async def unban_handler(b, m: Message):
     else:
         await m.reply_text(text=f"`{id}`** مسدود نشده است** ", parse_mode=ParseMode.MARKDOWN, quote=True)
 
-@FileStream.on_message(filters.command("broadcast") & filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)) & filters.reply)
+@FileStream.on_message(filters.command("broadcast") & filters.private & filters.reply)
 async def broadcast_command_handler(c, m):
     """هندلر برای دستور /broadcast با ریپلای"""
+    if not is_admin(m.from_user.id):
+        await m.reply_text("❌ شما دسترسی به این دستور ندارید.")
+        return
+        
     await start_broadcast(c, m, m.reply_to_message)
 
-@FileStream.on_message(filters.command("del") & filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)))
+@FileStream.on_message(filters.command("del") & filters.private)
 async def delete_handler(c: Client, m: Message):
+    if not is_admin(m.from_user.id):
+        await m.reply_text("❌ شما دسترسی به این دستور ندارید.")
+        return
+        
     file_id = m.text.split(" ")[-1]
     try:
         file_info = await db.get_file(file_id)
