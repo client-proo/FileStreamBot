@@ -63,25 +63,10 @@ ADMIN_KEYBOARD = ReplyKeyboardMarkup(
     selective=True
 )
 
-@FileStream.on_message(filters.command(["cancel", "لغو"]) & filters.private & filters.user(Telegram.OWNER_ID))
-async def cancel_handler(bot: Client, message: Message):
-    user_id = message.from_user.id
-    if user_id in user_states:
-        del user_states[user_id]
-        await message.reply_text(
-            "✅ عملیات کنسل شد.",
-            reply_markup=ADMIN_KEYBOARD
-        )
-    else:
-        await message.reply_text(
-            "⚠️ هیچ عملیات فعالی برای لغو وجود ندارد.",
-            reply_markup=ADMIN_KEYBOARD
-        )
-
 @FileStream.on_message(filters.command("panel") & filters.private & filters.user(Telegram.OWNER_ID))
 async def admin_panel_handler(bot: Client, message: Message):
     await message.reply_text(
-        "🛠 **پنل مدیریت ادمین**\n\n"
+        "🏠 **صفحه اصلی**\n\n"
         "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
         reply_markup=ADMIN_KEYBOARD
     )
@@ -96,7 +81,7 @@ async def admin_message_handler(bot: Client, message: Message):
         if message.text == "🔙 بازگشت":
             del user_states[user_id]
             await message.reply_text(
-                "🔙 **بازگشت به صفحه اصلی**",
+                "🏠 به صفحه اصلی بازگشتید",
                 reply_markup=ADMIN_KEYBOARD
             )
             return
@@ -130,7 +115,7 @@ async def admin_message_handler(bot: Client, message: Message):
             "• عکس/ویدیو ارسال کنید 🖼️\n"
             "• فایل فوروارد کنید 📎\n\n"
             "پیام شما مستقیماً برای همه کاربران ارسال خواهد شد.\n\n"
-            "❕ برای لغو از /cancel استفاده کنید.",
+            "برای بازگشت از دکمه 🔙 استفاده کنید.",
             reply_markup=ReplyKeyboardMarkup([[KeyboardButton("🔙 بازگشت")]], resize_keyboard=True)
         )
     
@@ -162,7 +147,7 @@ async def admin_message_handler(bot: Client, message: Message):
         if user_id in user_states:
             del user_states[user_id]
         await message.reply_text(
-            "🔙 **بازگشت به صفحه اصلی**",
+            "🏠 به صفحه اصلی بازگشتید",
             reply_markup=ADMIN_KEYBOARD
         )
 
