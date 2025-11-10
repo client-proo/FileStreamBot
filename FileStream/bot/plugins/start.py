@@ -20,18 +20,15 @@ from FileStream.bot.plugins.admin import ADMIN_KEYBOARD, is_bot_active
 
 @FileStream.on_message(filters.command('start') & filters.private)
 async def start(bot: Client, message: Message):
-    # اگر کاربر ادمین نیست و ربات خاموش است، هیچ کاری نکن
-    if message.from_user.id != Telegram.OWNER_ID and not is_bot_active():
-        await message.reply_text("❌ ربات در حال حاضر غیرفعال است.")
+    # اگر ربات خاموش است و کاربر عادی است
+    if not is_bot_active() and message.from_user.id != Telegram.OWNER_ID:
+        await message.reply_text("❌ ربات در حال حاضر غیرفعال است. لطفاً بعداً تلاش کنید.")
         return
 
-    # اگر کاربر ادمین نیست، اجازه دسترسی نده
+    # اگر کاربر ادمین نیست، باید verify_user را چک کنیم
     if message.from_user.id != Telegram.OWNER_ID:
-        await message.reply_text("❌ دسترسی denied. این ربات در حال حاضر فقط برای ادمین قابل استفاده است.")
-        return
-
-    if not await verify_user(bot, message):
-        return
+        if not await verify_user(bot, message):
+            return
     
     usr_cmd = message.text.split("_")[-1]
 
@@ -45,7 +42,7 @@ async def start(bot: Client, message: Message):
             )
             return
 
-    # پردازش لینک‌های stream_ و file_ فقط برای ادمین
+    # پردازش لینک‌های stream_ و file_ برای همه کاربران مجاز
     if usr_cmd != "/start":
         if "stream_" in message.text:
             try:
@@ -92,7 +89,7 @@ async def start(bot: Client, message: Message):
             await message.reply_text(f"**دستور نامعتبر**")
         return
 
-    # پیام start فقط برای ادمین
+    # پیام start برای کاربران عادی و ادمین
     if Telegram.START_PIC:
         await message.reply_photo(
             photo=Telegram.START_PIC,
@@ -110,13 +107,15 @@ async def start(bot: Client, message: Message):
 
 @FileStream.on_message(filters.private & filters.command(["about"]))
 async def about_handler(bot, message):
-    # فقط ادمین می‌تواند از این دستور استفاده کند
-    if message.from_user.id != Telegram.OWNER_ID:
-        await message.reply_text("❌ دسترسی denied.")
+    # اگر ربات خاموش است و کاربر عادی است
+    if not is_bot_active() and message.from_user.id != Telegram.OWNER_ID:
+        await message.reply_text("❌ ربات در حال حاضر غیرفعال است.")
         return
 
-    if not await verify_user(bot, message):
-        return
+    if message.from_user.id != Telegram.OWNER_ID:
+        if not await verify_user(bot, message):
+            return
+
     if Telegram.START_PIC:
         await message.reply_photo(
             photo=Telegram.START_PIC,
@@ -133,13 +132,15 @@ async def about_handler(bot, message):
 
 @FileStream.on_message((filters.command('help')) & filters.private)
 async def help_handler(bot, message):
-    # فقط ادمین می‌تواند از این دستور استفاده کند
-    if message.from_user.id != Telegram.OWNER_ID:
-        await message.reply_text("❌ دسترسی denied.")
+    # اگر ربات خاموش است و کاربر عادی است
+    if not is_bot_active() and message.from_user.id != Telegram.OWNER_ID:
+        await message.reply_text("❌ ربات در حال حاضر غیرفعال است.")
         return
 
-    if not await verify_user(bot, message):
-        return
+    if message.from_user.id != Telegram.OWNER_ID:
+        if not await verify_user(bot, message):
+            return
+
     if Telegram.START_PIC:
         await message.reply_photo(
             photo=Telegram.START_PIC,
@@ -159,13 +160,15 @@ async def help_handler(bot, message):
 
 @FileStream.on_message(filters.command('files') & filters.private)
 async def my_files(bot: Client, message: Message):
-    # فقط ادمین می‌تواند از این دستور استفاده کند
-    if message.from_user.id != Telegram.OWNER_ID:
-        await message.reply_text("❌ دسترسی denied.")
+    # اگر ربات خاموش است و کاربر عادی است
+    if not is_bot_active() and message.from_user.id != Telegram.OWNER_ID:
+        await message.reply_text("❌ ربات در حال حاضر غیرفعال است.")
         return
 
-    if not await verify_user(bot, message):
-        return
+    if message.from_user.id != Telegram.OWNER_ID:
+        if not await verify_user(bot, message):
+            return
+
     user_files, total_files = await db.find_files(message.from_user.id, [1, 10])
 
     file_list = []
