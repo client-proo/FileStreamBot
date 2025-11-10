@@ -102,7 +102,7 @@ async def cb_data(bot, update: CallbackQuery):
                 # به روزرسانی لیست فایل‌ها
                 file_list, total_files = await gen_file_list_button(1, update.from_user.id)
                 await update.message.edit_caption(
-                    caption="🗂 تعداد کل فایل ها: {}\n\n⚠️ برخی فایل‌ها منقضی شده و حذف شدند".format(total_files),
+                    caption="🗂 تعداد کل فایل ها: {}".format(total_files),
                     reply_markup=InlineKeyboardMarkup(file_list)
                 )
         else:
@@ -116,7 +116,7 @@ async def cb_data(bot, update: CallbackQuery):
         if usr_cmd[0] in ["myfile", "sendfile"]:
             file_list, total_files = await gen_file_list_button(1, update.from_user.id)
             await update.message.edit_caption(
-                caption="🗂 تعداد کل فایل ها: {}\n\n⚠️ این فایل منقضی شده و حذف شد".format(total_files),
+                caption="🗂 تعداد کل فایل ها: {}".format(total_files),
                 reply_markup=InlineKeyboardMarkup(file_list)
             )
     
@@ -167,7 +167,7 @@ async def gen_file_list_button(file_list_no: int, user_id: int):
     
     except Exception as e:
         logging.error(f"Error in gen_file_list_button: {e}")
-        return [[InlineKeyboardButton("❌ خطا در بارگذاری", callback_data="N/A")]], 0
+        return [[InlineKeyboardButton("📭 خالی", callback_data="N/A")]], 0
 
 async def gen_file_menu(_id, file_list_no, update: CallbackQuery):
     try:
@@ -178,7 +178,7 @@ async def gen_file_menu(_id, file_list_no, update: CallbackQuery):
         # برگشت به لیست فایل‌ها
         file_list, total_files = await gen_file_list_button(file_list_no, update.from_user.id)
         await update.message.edit_caption(
-            caption="🗂 تعداد کل فایل ها: {}\n\n⚠️ این فایل منقضی شده و حذف شد".format(total_files),
+            caption="🗂 تعداد کل فایل ها: {}".format(total_files),
             reply_markup=InlineKeyboardMarkup(file_list)
         )
         return
@@ -258,7 +258,7 @@ async def delete_user_file(_id, file_list_no: int, update:CallbackQuery):
         # برگشت به لیست فایل‌ها
         file_list, total_files = await gen_file_list_button(file_list_no, update.from_user.id)
         await update.message.edit_caption(
-            caption="🗂 تعداد کل فایل ها: {}\n\n⚠️ این فایل قبلاً حذف شده است".format(total_files),
+            caption="🗂 تعداد کل فایل ها: {}".format(total_files),
             reply_markup=InlineKeyboardMarkup(file_list)
         )
         return
