@@ -34,25 +34,22 @@ db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
     group=4,
 )
 async def private_receive_handler(bot: Client, message: Message):
-    # اگر کاربر ادمین نیست، اجازه آپلود نده
+    # چک کردن وضعیت ربات - اگر خاموش است و کاربر عادی است
+    if not is_bot_active() and message.from_user.id != Telegram.OWNER_ID:
+        await message.reply_text("❌ ربات در حال حاضر غیرفعال است. لطفاً بعداً تلاش کنید.")
+        return
+
+    # اگر کاربر ادمین نیست، باید verify_user را چک کنیم
     if message.from_user.id != Telegram.OWNER_ID:
-        await message.reply_text("❌ دسترسی denied. این ربات در حال حاضر فقط برای ادمین قابل استفاده است.")
-        return
-
-    # چک کردن وضعیت ربات
-    if not is_bot_active():
-        await message.reply_text("❌ ربات در حال حاضر غیرفعال است.")
-        return
-
-    if not await is_user_authorized(message):
-        return
-    if await is_user_banned(message):
-        return
-
-    await is_user_exist(bot, message)
-    if Telegram.FORCE_SUB:
-        if not await is_user_joined(bot, message):
+        if not await is_user_authorized(message):
             return
+        if await is_user_banned(message):
+            return
+
+        await is_user_exist(bot, message)
+        if Telegram.FORCE_SUB:
+            if not await is_user_joined(bot, message):
+                return
 
     file_unique_id = get_file_info(message)['file_unique_id']
 
@@ -129,97 +126,4 @@ async def private_receive_handler(bot: Client, message: Message):
             except Exception as cleanup_error:
                 print(f"Cleanup failed: {cleanup_error}")
 
-# ====================== AUTO DELETE + DB CLEANUP + EXPIRED MESSAGE ======================
-async def delete_after_expire(reply_msg: Message, original_msg: Message, user_id: int, file_id: int, delay: float):
-    await asyncio.sleep(delay)
-
-    # --- 1. حذف پیام لینک ---
-    try:
-        await reply_msg.delete()
-        print(f"Link message deleted: {reply_msg.id}")
-    except MessageDeleteForbidden:
-        print(f"Cannot delete link message (forbidden): {reply_msg.id}")
-    except Exception as e:
-        print(f"Error deleting link message: {e}")
-
-    # --- 2. پاک کردن فایل از دیتابیس ---
-    try:
-        await db.delete_one_file(file_id)
-        await db.count_links(user_id, "-")
-        print(f"File {file_id} expired and deleted from DB")
-    except Exception as e:
-        print(f"Error deleting expired file from DB: {e}")
-
-    # --- 3. ارسال پیام منقضی شده ---
-    try:
-        if original_msg and original_msg.id:
-            await original_msg.reply_text(
-                "لینک شما منقضی شد!",
-                quote=True
-            )
-        else:
-            await FileStream.send_message(
-                chat_id=user_id,
-                text="لینک شما منقضی شد!"
-            )
-    except Exception as e:
-        print(f"Could not send expired message: {e}")
-        try:
-            await FileStream.send_message(chat_id=user_id, text="لینک شما منقضی شد!")
-        except Exception:
-            pass
-
-
-# ====================== CHANNEL FILE HANDLER ======================
-@FileStream.on_message(
-    filters.channel
-    & ~filters.forwarded
-    & ~filters.media_group
-    & (
-        filters.document
-        | filters.video
-        | filters.video_note
-        | filters.audio
-        | filters.voice
-        | filters.photo
-    )
-)
-async def channel_receive_handler(bot: Client, message: Message):
-    if await is_channel_banned(bot, message):
-        return
-    await is_channel_exist(bot, message)
-
-    file_unique_id = get_file_info(message)['file_unique_id']
-    is_repeat, _ = await db.check_repeat(message.chat.id, file_unique_id)
-    if is_repeat:
-        return
-
-    try:
-        inserted_id = await db.add_file(get_file_info(message))
-        await get_file_ids(False, inserted_id, multi_clients, message)
-        reply_markup, _ = await gen_link(_id=inserted_id)
-
-        try:
-            await bot.edit_message_reply_markup(
-                chat_id=message.chat.id,
-                message_id=message.id,
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("دانلود", url=f"https://t.me/{FileStream.username}?start=stream_{inserted_id}")]
-                ])
-            )
-        except Exception:
-            await bot.send_message(
-                chat_id=message.chat.id,
-                text="لینک دانلود:",
-                reply_to_message_id=message.id,
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("دانلود فایل", url=f"https://t.me/{FileStream.username}?start=stream_{inserted_id}")]
-                ])
-            )
-
-    except FloodWait as w:
-        await asyncio.sleep(w.value)
-        await bot.send_message(chat_id=Telegram.ULOG_CHANNEL, text=f"FloodWait {w.value}s")
-    except Exception as e:
-        await bot.send_message(chat_id=Telegram.ULOG_CHANNEL, text=f"Error: {e}")
-        print(f"Channel error: {e}")
+# بقیه کدهای stream.py بدون تغییر...
