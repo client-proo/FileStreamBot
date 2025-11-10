@@ -89,6 +89,11 @@ bot_status = load_bot_status()
 # لیست ادمین‌ها
 admins_data = load_admins()
 
+# تابع برای چک کردن دسترسی ادمین
+def is_admin(user_id: int) -> bool:
+    """چک کردن آیا کاربر ادمین است یا نه"""
+    return user_id == Telegram.OWNER_ID or user_id in admins_data
+
 # کیبورد مدیریت ادمین
 ADMIN_KEYBOARD = ReplyKeyboardMarkup(
     [
@@ -105,7 +110,7 @@ ADMIN_KEYBOARD = ReplyKeyboardMarkup(
     selective=True
 )
 
-@FileStream.on_message(filters.command("panel") & filters.private & filters.user(Telegram.OWNER_ID))
+@FileStream.on_message(filters.command("panel") & filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)))
 async def admin_panel_handler(bot: Client, message: Message):
     await message.reply_text(
         "🏠 **صفحه اصلی**\n\n"
@@ -113,7 +118,7 @@ async def admin_panel_handler(bot: Client, message: Message):
         reply_markup=ADMIN_KEYBOARD
     )
 
-@FileStream.on_message(filters.private & filters.user(Telegram.OWNER_ID))
+@FileStream.on_message(filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)))
 async def admin_message_handler(bot: Client, message: Message):
     global bot_status
     user_id = message.from_user.id
@@ -162,6 +167,11 @@ async def admin_message_handler(bot: Client, message: Message):
         await message.reply_text(stats_text, reply_markup=ADMIN_KEYBOARD)
     
     elif message.text == "🔊 ارسال پیام همگانی":
+        # فقط صاحب ربات می‌تواند پیام همگانی ارسال کند
+        if message.from_user.id != Telegram.OWNER_ID:
+            await message.reply_text("❌ فقط صاحب ربات می‌تواند پیام همگانی ارسال کند.")
+            return
+            
         user_states[user_id] = "awaiting_broadcast"
         await message.reply_text(
             "📨 **ارسال پیام همگانی**\n\n"
@@ -175,6 +185,11 @@ async def admin_message_handler(bot: Client, message: Message):
         )
     
     elif message.text == "⚙️ تنظیمات":
+        # فقط صاحب ربات می‌تواند تنظیمات را تغییر دهد
+        if message.from_user.id != Telegram.OWNER_ID:
+            await message.reply_text("❌ فقط صاحب ربات می‌تواند تنظیمات را تغییر دهد.")
+            return
+            
         # ایجاد کیبورد اینلاین برای تنظیمات
         settings_keyboard = InlineKeyboardMarkup([
             [
@@ -203,6 +218,11 @@ async def admin_message_handler(bot: Client, message: Message):
         await message.reply_text(settings_text, reply_markup=settings_keyboard)
     
     elif message.text == "🔴 خاموش/روشن کردن ربات":
+        # فقط صاحب ربات می‌تواند ربات را خاموش/روشن کند
+        if message.from_user.id != Telegram.OWNER_ID:
+            await message.reply_text("❌ فقط صاحب ربات می‌تواند ربات را خاموش/روشن کند.")
+            return
+            
         # تغییر وضعیت ربات
         bot_status = not bot_status
         save_bot_status(bot_status)  # ذخیره در فایل
@@ -294,15 +314,18 @@ async def show_admins_list(bot: Client, message: Message = None, callback_query:
         
         text = "**لیست ادمین های ثبت شده در ربات👇👇**\n\nدر حال حاضر هیچ ادمینی ثبت نشده است."
     else:
-        # ایجاد کیبورد برای ادمین‌ها
+        # ایجاد کیبورد برای ادمین‌ها - چهار دکمه جداگانه
         keyboard_buttons = []
         for admin_id, admin_info in display_admins.items():
-            button_text = f"{admin_id} | {admin_info['name']}"
-            if len(button_text) > 30:
-                button_text = button_text[:27] + "..."
-                
+            # کوتاه کردن نام اگر طولانی باشد
+            name_display = admin_info['name']
+            if len(name_display) > 15:
+                name_display = name_display[:12] + "..."
+            
+            # چهار دکمه جداگانه در یک ردیف
             keyboard_buttons.append([
-                InlineKeyboardButton(button_text, callback_data=f"admin_info_{admin_id}"),
+                InlineKeyboardButton(str(admin_id), callback_data=f"admin_info_{admin_id}"),
+                InlineKeyboardButton(name_display, callback_data=f"admin_info_{admin_id}"),
                 InlineKeyboardButton("⚙", callback_data=f"admin_settings_{admin_id}"),
                 InlineKeyboardButton("❌", callback_data=f"admin_delete_{admin_id}")
             ])
@@ -358,6 +381,11 @@ async def show_admin_settings(bot: Client, admin_id: int, callback_query: Callba
 # هندلر برای callback_query های تنظیمات
 @FileStream.on_callback_query(filters.regex("^settings_"))
 async def settings_callback_handler(bot: Client, update: CallbackQuery):
+    # فقط صاحب ربات می‌تواند تنظیمات را تغییر دهد
+    if update.from_user.id != Telegram.OWNER_ID:
+        await update.answer("❌ فقط صاحب ربات می‌تواند تنظیمات را تغییر دهد.", show_alert=True)
+        return
+        
     data = update.data
     
     if data == "settings_force_sub":
@@ -389,6 +417,11 @@ async def settings_callback_handler(bot: Client, update: CallbackQuery):
 # هندلر برای مدیریت ادمین‌ها
 @FileStream.on_callback_query(filters.regex("^(add_admin|admin_|perm_|make_owner)"))
 async def admin_management_handler(bot: Client, update: CallbackQuery):
+    # فقط صاحب ربات می‌تواند ادمین‌ها را مدیریت کند
+    if update.from_user.id != Telegram.OWNER_ID:
+        await update.answer("❌ فقط صاحب ربات می‌تواند ادمین‌ها را مدیریت کند.", show_alert=True)
+        return
+        
     data = update.data
     
     if data == "add_admin":
@@ -590,12 +623,19 @@ async def start_broadcast(bot: Client, message: Message, broadcast_msg: Message)
         except:
             pass
 
-@FileStream.on_message(filters.command("status") & filters.private & filters.user(Telegram.OWNER_ID))
+@FileStream.on_message(filters.command("status") & filters.private & filters.create(lambda _, __, m: is_admin(m.from_user.id)))
 async def sts(c: Client, m: Message):
-    await m.reply_text(text=f"""**👥 کل کاربران:** `{await db.total_users_count()}`
-**🚫 کاربران مسدود شده:** `{await db.total_banned_users_count()}`
-**🔗 لینک‌های تولید شده: ** `{await db.total_files()}`"""
-                       , parse_mode=ParseMode.MARKDOWN, quote=True)
+    total_users = await db.total_users_count()
+    total_banned = await db.total_banned_users_count()
+    total_files = await db.total_files()
+    
+    await m.reply_text(
+        text=f"**👥 کل کاربران:** `{total_users}`\n"
+             f"**🚫 کاربران مسدود شده:** `{total_banned}`\n"
+             f"**🔗 لینک‌های تولید شده:** `{total_files}`",
+        parse_mode=ParseMode.MARKDOWN,
+        quote=True
+    )
 
 @FileStream.on_message(filters.command("ban") & filters.private & filters.user(Telegram.OWNER_ID))
 async def ban_handler(b, m: Message):
