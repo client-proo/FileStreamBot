@@ -1,262 +1,227 @@
+import pymongo
 import time
-from pyrogram.errors import UserNotParticipant, FloodWait
-from pyrogram.enums.parse_mode import ParseMode
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
-from FileStream.utils.translation import LANG
-from FileStream.utils.database import Database
-from FileStream.utils.human_readable import humanbytes
-from FileStream.config import Telegram, Server
-from FileStream.bot import FileStream
-import asyncio
-from typing import (
-    Union
-)
-from jdatetime import datetime as jdatetime
-import pytz
-from datetime import datetime
+import motor.motor_asyncio
+from bson.objectid import ObjectId
+from bson.errors import InvalidId
+from datetime import datetime, timezone
+from FileStream.server.exceptions import FIleNotFound
+from FileStream.config import Telegram
 
-db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 
-async def get_invite_link(bot, chat_id: Union[str, int]):
-    try:
-        invite_link = await bot.create_chat_invite_link(chat_id=chat_id)
-        return invite_link
-    except FloodWait as e:
-        print(f"Sleep of {e.value}s caused by FloodWait ...")
-        await asyncio.sleep(e.value)
-        return await get_invite_link(bot, chat_id)
+class Database:
+    def __init__(self, uri, database_name):
+        self._client = motor.motor_asyncio.AsyncIOMotorClient(uri)
+        self.db = self._client[database_name]
+        self.col = self.db.users
+        self.black = self.db.blacklist
+        self.file = self.db.file
 
-async def is_user_joined(bot, message: Message):
-    if Telegram.FORCE_SUB_ID and Telegram.FORCE_SUB_ID.startswith("-100"):
-        channel_chat_id = int(Telegram.FORCE_SUB_ID)    # When id startswith with -100
-    elif Telegram.FORCE_SUB_ID and (not Telegram.FORCE_SUB_ID.startswith("-100")):
-        channel_chat_id = Telegram.FORCE_SUB_ID     # When id not startswith -100
-    else:
-        return 200
-    try:
-        user = await bot.get_chat_member(chat_id=channel_chat_id, user_id=message.from_user.id)
-        if user.status == "BANNED":
-            await message.reply_text(
-                text=LANG.BAN_TEXT.format(Telegram.OWNER_ID),
-                parse_mode=ParseMode.MARKDOWN,
-                disable_web_page_preview=True
-            )
-            return False
-    except UserNotParticipant:
-        invite_link = await get_invite_link(bot, chat_id=channel_chat_id)
-        if Telegram.VERIFY_PIC:
-            ver = await message.reply_photo(
-                photo=Telegram.VERIFY_PIC,
-                caption="<b>⚠️ <i>عضویت اجباری در کانال</i> ⚠️</b>\n\nبرای استفاده از ربات، لطفاً ابتدا <b><i>عضو کانال</i></b> شوید.\n\nپس از <b><i>عضویت</i></b>، دوباره امتحان کنید.",
-                parse_mode=ParseMode.HTML,
-                reply_markup=InlineKeyboardMarkup(
-                [[
-                    InlineKeyboardButton("LinkBolt channel", url=invite_link.invite_link)
-                ]]
-                )
-            )
+    # ---------------------[ NEW USER ]---------------------#
+    def new_user(self, id):
+        return dict(
+            id=id,
+            join_date=time.time(),
+            Links=0,
+            last_send_time=0
+        )
+
+    # ---------------------[ ADD USER ]---------------------#
+    async def add_user(self, id):
+        user = self.new_user(id)
+        await self.col.insert_one(user)
+
+    # ---------------------[ GET USER ]---------------------#
+    async def get_user(self, id):
+        user = await self.col.find_one({'id': int(id)})
+        return user
+
+    # ---------------------[ CHECK USER ]---------------------#
+    async def total_users_count(self):
+        count = await self.col.count_documents({})
+        return count
+
+    async def get_all_users(self):
+        all_users = self.col.find({})
+        return all_users
+
+    # ---------------------[ REMOVE USER ]---------------------#
+    async def delete_user(self, user_id):
+        await self.col.delete_many({'id': int(user_id)})
+
+    # ---------------------[ BAN, UBNAN USER ]---------------------#
+    def black_user(self, id):
+        return dict(
+            id=id,
+            ban_date=time.time()
+        )
+
+    async def ban_user(self, id):
+        user = self.black_user(id)
+        await self.black.insert_one(user)
+
+    async def unban_user(self, id):
+        await self.black.delete_one({'id': int(id)})
+
+    async def is_user_banned(self, id):
+        user = await self.black.find_one({'id': int(id)})
+        return True if user else False
+
+    async def total_banned_users_count(self):
+        count = await self.black.count_documents({})
+        return count
+
+    # ---------------------[ ADD FILE TO DB ]---------------------#
+    async def add_file(self, file_info):
+        file_info["time"] = time.time()
+
+        # فقط فایل‌های فعال (غیر منقضی) رو چک کن
+        expire_threshold = time.time() - Telegram.EXPIRE_TIME
+        fetch_old = await self.file.find_one({
+            "user_id": file_info["user_id"],
+            "file_unique_id": file_info["file_unique_id"],
+            "time": {"$gt": expire_threshold}
+        })
+
+        if fetch_old:
+            return fetch_old["_id"]  # فایل فعال → برگردون همون
         else:
-            ver = await message.reply_text(
-                text = "<b>⚠️ <i>عضویت اجباری در کانال</i> ⚠️</b>\n\nبرای استفاده از ربات، لطفاً ابتدا <b><i>عضو کانال</i></b> شوید.\n\nپس از <b><i>عضویت</i></b>، دوباره امتحان کنید.",
-                reply_markup=InlineKeyboardMarkup(
-                    [[
-                        InlineKeyboardButton("LinkBolt channel", url=invite_link.invite_link)
-                    ]]
-                ),
-                parse_mode=ParseMode.HTML
-            )
-        await asyncio.sleep(30)
+            await self.count_links(file_info["user_id"], "+")
+            return (await self.file.insert_one(file_info)).inserted_id
+
+    # ---------------------[ FIND FILE IN DB ]---------------------#
+    async def find_files(self, user_id, range):
+        # فقط فایل‌های فعال (غیر منقضی) رو نشون بده
+        expire_threshold = time.time() - Telegram.EXPIRE_TIME
+        query = {
+            "user_id": user_id,
+            "time": {"$gt": expire_threshold}
+        }
+        user_files = self.file.find(query)
+        user_files.skip(range[0] - 1)
+        user_files.limit(range[1] - range[0] + 1)
+        user_files.sort('_id', pymongo.DESCENDING)
+        total_files = await self.file.count_documents(query)
+        return user_files, total_files
+
+    async def get_file(self, _id):
         try:
-            await ver.delete()
-            await message.delete()
-        except Exception:
-            pass
-        return False
-    except Exception:
-        await message.reply_text(
-            text = f"<i>Sᴏᴍᴇᴛʜɪɴɢ ᴡʀᴏɴɢ ᴄᴏɴᴛᴀᴄᴛ ᴍʏ ᴅᴇᴠᴇʟᴏᴘᴇʀ</i> <b><a href='https://t.me/{Telegram.UPDATES_CHANNEL}'>[ ᴄʟɪᴄᴋ ʜᴇʀᴇ]</a></b>",
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True)
-        return False
-    return True
+            file_info = await self.file.find_one({"_id": ObjectId(_id)})
+            if not file_info:
+                raise FIleNotFound
+            
+            # چک انقضا در سطح دیتابیس - مهم!
+            create_time = file_info["time"]
+            if time.time() > create_time + Telegram.EXPIRE_TIME:
+                # حذف فایل منقضی شده
+                await self.delete_one_file(file_info['_id'])
+                if file_info.get('user_id'):
+                    await self.count_links(file_info['user_id'], "-")
+                raise FIleNotFound
+                
+            return file_info
+        except InvalidId:
+            raise FIleNotFound
 
-#---------------------[ PRIVATE GEN LINK + CALLBACK ]---------------------#
-
-def seconds_to_hms(seconds: int) -> str:
-    """تبدیل ثانیه به فرمت خوانا: X ساعت Y دقیقه Z ثانیه"""
-    if seconds <= 0:
-        return "0 ثانیه"
-    
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-    secs = seconds % 60
-    
-    parts = []
-    if hours > 0:
-        parts.append(f"{hours} ساعت")
-    if minutes > 0:
-        parts.append(f"{minutes} دقیقه")
-    if secs > 0:
-        parts.append(f"{secs} ثانیه")
-    
-    return " و ".join(parts)
-
-async def gen_link(_id):
-    try:
-        file_info = await db.get_file(_id)
-        create_time = file_info['time']
-        expire_time = create_time + Telegram.EXPIRE_TIME
-        remaining_seconds = int(expire_time - time.time())
-        
-        if remaining_seconds <= 0:
-            return None, "❌ لینک منقضی شده است"
-
-        # تاریخ شمسی انقضا (به وقت ایران)
-        tz_iran = pytz.timezone('Asia/Tehran')
-        expire_dt = datetime.fromtimestamp(expire_time, tz_iran)
-        expire_jalali = jdatetime.fromgregorian(datetime=expire_dt).strftime('%Y/%m/%d - %H:%M:%S')
-
-        # شمارش معکوس به صورت خوانا
-        remaining_readable = seconds_to_hms(remaining_seconds)
-
-        file_name = file_info['file_name']
-        file_size = humanbytes(file_info['file_size'])
-        mime_type = file_info['mime_type']
-
-        page_link = f"{Server.URL}watch/{_id}"
-        stream_link = f"{Server.URL}dl/{_id}"
-        file_link = f"https://t.me/{FileStream.username}?start=file_{_id}"
-
-        if "video" in mime_type:
-            stream_text = LANG.STREAM_TEXT.format(file_name, file_size, stream_link, page_link, file_link)
-            stream_text += f"\n\n⏰ زمان باقی‌مانده: **{remaining_readable}**\n📅 انقضا: {expire_jalali}"
-            reply_markup = InlineKeyboardMarkup(
-                [
-                    [InlineKeyboardButton("🖥️ پخش آنلاین", url=page_link), InlineKeyboardButton("📥 دانلود", url=stream_link)],
-                    [InlineKeyboardButton("📂 دریافت فایل", url=file_link), InlineKeyboardButton("🗑 حذف فایل", callback_data=f"msgdelpvt_{_id}")],
-                    [InlineKeyboardButton("✖️ بستن", callback_data="close")]
-                ]
-            )
+    async def get_file_by_fileuniqueid(self, id, file_unique_id, many=False):
+        expire_threshold = time.time() - Telegram.EXPIRE_TIME
+        query = {
+            "user_id": id,
+            "file_unique_id": file_unique_id,
+            "time": {"$gt": expire_threshold}
+        }
+        if many:
+            return self.file.find(query)
         else:
-            stream_text = LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link)
-            stream_text += f"\n\n⏰ زمان باقی‌مانده: **{remaining_readable}**\n📅 انقضا: {expire_jalali}"
-            reply_markup = InlineKeyboardMarkup(
-                [
-                    [InlineKeyboardButton("📥 دانلود", url=stream_link)],
-                    [InlineKeyboardButton("📂 دریافت فایل", url=file_link), InlineKeyboardButton("🗑 حذف فایل", callback_data=f"msgdelpvt_{_id}")],
-                    [InlineKeyboardButton("✖️ بستن", callback_data="close")]
-                ]
-            )
-        return reply_markup, stream_text
-        
-    except Exception as e:
-        return None, "❌ خطا در تولید لینک"
+            return await self.file.find_one(query)
 
-#---------------------[ GEN STREAM LINKS FOR CHANNEL ]---------------------#
+    # ---------------------[ TOTAL FILES ]---------------------#
+    async def total_files(self, id=None):
+        if id:
+            expire_threshold = time.time() - Telegram.EXPIRE_TIME
+            return await self.file.count_documents({
+                "user_id": id,
+                "time": {"$gt": expire_threshold}
+            })
+        return await self.file.count_documents({})
 
-async def gen_linkx(m:Message , _id, name: list):
-    try:
-        file_info = await db.get_file(_id)
-        file_name = file_info['file_name']
-        mime_type = file_info['mime_type']
-        file_size = humanbytes(file_info['file_size'])
+    # ---------------------[ DELETE FILES ]---------------------#
+    async def delete_one_file(self, _id):
+        await self.file.delete_one({'_id': ObjectId(_id)})
 
-        page_link = f"{Server.URL}watch/{_id}"
-        stream_link = f"{Server.URL}dl/{_id}"
-        file_link = f"https://t.me/{FileStream.username}?start=file_{_id}"
+    # ---------------------[ UPDATE FILES ]---------------------#
+    async def update_file_ids(self, _id, file_ids: dict):
+        await self.file.update_one({"_id": ObjectId(_id)}, {"$set": {"file_ids": file_ids}})
 
-        if "video" in mime_type:
-            stream_text= LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, page_link)
-            reply_markup = InlineKeyboardMarkup(
-                [
-                    [InlineKeyboardButton("🖥️ پخش آنلاین", url=page_link), InlineKeyboardButton("📥 دانلود", url=stream_link)]
-                ]
-            )
-        else:
-            stream_text= LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link)
-            reply_markup = InlineKeyboardMarkup(
-                [
-                    [InlineKeyboardButton("📥 دانلود", url=stream_link)]
-                ]
-            )
-        return reply_markup, stream_text
-    except Exception:
-        return None, "❌ فایل پیدا نشد یا منقضی شده است"
+    # ---------------------[ PAID SYS ]---------------------#
+    async def count_links(self, id, operation: str):
+        if operation == "-":
+            await self.col.update_one({"id": id}, {"$inc": {"Links": -1}})
+        elif operation == "+":
+            await self.col.update_one({"id": id}, {"$inc": {"Links": 1}})
 
-#---------------------[ USER BANNED ]---------------------#
+    # ---------------------[ CHECK REPEAT (تا انقضای لینک) ]---------------------#
+    async def check_repeat(self, user_id, file_unique_id):
+        expire_threshold = time.time() - Telegram.EXPIRE_TIME
 
-async def is_user_banned(message):
-    if await db.is_user_banned(message.from_user.id):
-        await message.reply_text(
-            text=LANG.BAN_TEXT.format(Telegram.OWNER_ID),
-            parse_mode=ParseMode.MARKDOWN,
-            disable_web_page_preview=True
-        )
-        return True
-    return False
-
-#---------------------[ CHANNEL BANNED ]---------------------#
-
-async def is_channel_banned(bot, message):
-    if await db.is_user_banned(message.chat.id):
-        await bot.edit_message_reply_markup(
-            chat_id=message.chat.id,
-            message_id=message.id,
-            reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton(f"ᴄʜᴀɴɴᴇʟ ɪs ʙᴀɴɴᴇᴅ", callback_data="N/A")]])
-        )
-        return True
-    return False
-
-#---------------------[ USER AUTH ]---------------------#
-
-async def is_user_authorized(message):
-    if hasattr(Telegram, 'AUTH_USERS') and Telegram.AUTH_USERS:
-        user_id = message.from_user.id
-
-        if user_id == Telegram.OWNER_ID:
-            return True
-
-        if not (user_id in Telegram.AUTH_USERS):
-            await message.reply_text(
-                text="شما مجاز به استفاده از این ربات نیستید.",
-                parse_mode=ParseMode.MARKDOWN,
-                disable_web_page_preview=True
-            )
-            return False
-
-    return True
-
-#---------------------[ USER EXIST ]---------------------#
-
-async def is_user_exist(bot, message):
-    if not bool(await db.get_user(message.from_user.id)):
-        await db.add_user(message.from_user.id)
-        await bot.send_message(
-            Telegram.ULOG_CHANNEL,
-            f"**✨ کاربر جدید اضافه شد! ✨**\n**👤 نام کاربر :** [{message.from_user.first_name}](tg://user?id={message.from_user.id})\n**🆔 آیدی کاربر :** `{message.from_user.id}`"
+        last_file = await self.file.find_one(
+            {
+                "user_id": user_id,
+                "file_unique_id": file_unique_id,
+                "time": {"$gt": expire_threshold}
+            },
+            sort=[("time", -1)]
         )
 
-async def is_channel_exist(bot, message):
-    if not bool(await db.get_user(message.chat.id)):
-        await db.add_user(message.chat.id)
-        members = await bot.get_chat_members_count(message.chat.id)
-        await bot.send_message(
-            Telegram.ULOG_CHANNEL,
-            f"**✨ کانال جدید اضافه شد! ✨** \n💬 نام چت:** `{message.chat.title}`\n**🆔 آیدی چت :** `{message.chat.id}`\n**⬩ 👥 کل کاربران :** `{members}`"
-        )
+        if last_file:
+            last_time = last_file['time']
+            remaining = int(Telegram.EXPIRE_TIME - (time.time() - last_time))
+            return True, remaining  # فایل هنوز فعال است
+        return False, 0  # فایل منقضی شده → اجازه آپلود
 
-async def verify_user(bot, message):
-    if not await is_user_authorized(message):
-        return False
+    # ---------------------[ CHECK SPAM ]---------------------#
+    async def check_spam(self, user_id):
+        user = await self.get_user(user_id)
+        if not user:
+            return 0, False
+        last_send = user.get('last_send_time', 0)
+        remaining = Telegram.ANTI_SPAM_TIME - (time.time() - last_send)
+        if remaining > 0:
+            return remaining, True
+        await self.col.update_one({'id': user_id}, {'$set': {'last_send_time': time.time()}})
+        return 0, False
 
-    if await is_user_banned(message):
-        return False
+    # ==================== EXPIRY CLEANUP (مهم!) ====================
+    async def cleanup_expired_files(self) -> None:
+        """
+        حذف خودکار تمام فایل‌های منقضی از دیتابیس
+        - اجرا در استارت ربات
+        - اجرا هر 30 دقیقه
+        """
+        try:
+            expire_threshold = time.time() - Telegram.EXPIRE_TIME
 
-    await is_user_exist(bot, message)
+            # پیدا کردن فایل‌های منقضی
+            expired_files = await self.file.find({
+                "time": {"$lt": expire_threshold}
+            }).to_list(None)
 
-    if Telegram.FORCE_SUB:
-        if not await is_user_joined(bot, message):
-            return False
+            deleted_count = 0
+            for file in expired_files:
+                file_id = file["_id"]
+                user_id = file.get("user_id")
 
-    return True
+                # حذف فایل
+                await self.file.delete_one({"_id": file_id})
+                if user_id:
+                    await self.count_links(user_id, "-")
+
+                deleted_count += 1
+                print(f"[CLEANUP] Expired file deleted: {file_id} (user: {user_id})")
+
+            if deleted_count > 0:
+                print(f"[CLEANUP] {deleted_count} expired files removed from database")
+            else:
+                print("[CLEANUP] No expired files found")
+
+        except Exception as e:
+            print(f"[CLEANUP ERROR] {e}")
