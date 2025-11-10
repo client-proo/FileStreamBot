@@ -16,9 +16,17 @@ import logging
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 
+# ایمپورت وضعیت ربات
+from FileStream.bot.plugins.admin import is_bot_active
+
 #---------------------[ START CMD ]---------------------#
 @FileStream.on_callback_query()
 async def cb_data(bot, update: CallbackQuery):
+    # اگر کاربر ادمین نیست، اجازه دسترسی نده
+    if update.from_user.id != Telegram.OWNER_ID:
+        await update.answer("❌ دسترسی denied. این ربات در حال حاضر فقط برای ادمین قابل استفاده است.", show_alert=True)
+        return
+    
     usr_cmd = update.data.split("_")
     
     try:
