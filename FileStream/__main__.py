@@ -2,76 +2,67 @@ import sys
 import asyncio
 import logging
 import traceback
-import logging.handlers as handlers
 from FileStream.config import Telegram, Server
 from aiohttp import web
 from pyrogram import idle
-
 from FileStream.bot import FileStream
 from FileStream.server import web_server
-from FileStream.bot.clients import initialize_clients
 
+# تنظیم لاگ‌گیری دقیق
 logging.basicConfig(
-    level=logging.INFO,
-    datefmt="%d/%m/%Y %H:%M:%S",
-    format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(stream=sys.stdout),
-              handlers.RotatingFileHandler("streambot.log", mode="a", maxBytes=104857600, backupCount=2, encoding="utf-8")],)
+    level=logging.DEBUG,  # تغییر به DEBUG برای جزئیات بیشتر
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('bot_debug.log', encoding='utf-8')
+    ]
+)
 
-logging.getLogger("aiohttp").setLevel(logging.ERROR)
-logging.getLogger("pyrogram").setLevel(logging.ERROR)
-logging.getLogger("aiohttp.web").setLevel(logging.ERROR)
-
-server = web.AppRunner(web_server())
-
-loop = asyncio.get_event_loop()
+logger = logging.getLogger(__name__)
 
 async def start_services():
-    print()
-    if Telegram.SECONDARY:
-        print("------------------ Starting as Secondary Server ------------------")
-    else:
-        print("------------------- Starting as Primary Server -------------------")
-    print()
-    print("-------------------- Initializing Telegram Bot --------------------")
-
-
-    await FileStream.start()
-    bot_info = await FileStream.get_me()
-    FileStream.id = bot_info.id
-    FileStream.username = bot_info.username
-    FileStream.fname=bot_info.first_name
-    print("------------------------------ DONE ------------------------------")
-    print()
-    print("---------------------- Initializing Clients ----------------------")
-    await initialize_clients()
-    print("------------------------------ DONE ------------------------------")
-    print()
-    print("--------------------- Initializing Web Server ---------------------")
-    await server.setup()
-    await web.TCPSite(server, Server.BIND_ADDRESS, Server.PORT).start()
-    print("------------------------------ DONE ------------------------------")
-    print()
-    print("------------------------- Service Started -------------------------")
-    print("                        bot =>> {}".format(bot_info.first_name))
-    if bot_info.dc_id:
-        print("                        DC ID =>> {}".format(str(bot_info.dc_id)))
-    print(" URL =>> {}".format(Server.URL))
-    print("------------------------------------------------------------------")
-    await idle()
+    logger.info("🚀 Starting FileStream Bot...")
+    
+    try:
+        # شروع ربات
+        logger.info("📞 Connecting to Telegram...")
+        await FileStream.start()
+        bot_info = await FileStream.get_me()
+        
+        logger.info(f"✅ Bot Started: {bot_info.first_name} (@{bot_info.username})")
+        logger.info(f"🆔 Bot ID: {bot_info.id}")
+        
+        # شروع سرور وب
+        logger.info("🌐 Starting Web Server...")
+        server = await web_server()
+        await server.start()
+        logger.info(f"✅ Web Server Started on port {Server.PORT}")
+        
+        logger.info("🤖 Bot is ready and running!")
+        await idle()
+        
+    except Exception as e:
+        logger.error(f"❌ Error starting bot: {e}")
+        traceback.print_exc()
 
 async def cleanup():
-    await server.cleanup()
-    await FileStream.stop()
+    try:
+        await FileStream.stop()
+        logger.info("🛑 Bot stopped successfully")
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
 
 if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    
     try:
         loop.run_until_complete(start_services())
     except KeyboardInterrupt:
-        pass
-    except Exception as err:
-        logging.error(traceback.format_exc())
+        logger.info("⏹️ Received interrupt signal")
+    except Exception as e:
+        logger.error(f"❌ Fatal error: {e}")
+        traceback.print_exc()
     finally:
         loop.run_until_complete(cleanup())
-        loop.stop()
-        print("------------------------ Stopped Services ------------------------")
+        loop.close()
+        logger.info("👋 Service stopped")
