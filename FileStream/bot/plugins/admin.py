@@ -80,6 +80,12 @@ bot_status = load_bot_status()
 # لیست ادمین‌ها
 admins_data = load_admins()
 
+# تابع is_bot_active برای حل مشکل import - این تابع باید در بالای فایل باشد
+def is_bot_active():
+    """بررسی وضعیت فعال بودن ربات"""
+    global bot_status
+    return bot_status
+
 # تابع برای چک کردن دسترسی ادمین
 def is_admin(user_id: int) -> bool:
     """چک کردن آیا کاربر ادمین است یا نه"""
@@ -470,8 +476,6 @@ async def callback_query_handler(bot: Client, update: CallbackQuery):
             await handle_settings_callback(bot, update, data)
         elif data.startswith(("add_admin", "admin_", "perm_")):
             await handle_admin_management_callback(bot, update, data)
-        elif data == "N/A":
-            await update.answer("این گزینه در دسترس نیست", show_alert=True)
     except Exception as e:
         print(f"Error in callback handler: {e}")
         await update.answer("❌ خطا در پردازش درخواست", show_alert=True)
@@ -620,7 +624,6 @@ async def handle_admin_management_callback(bot: Client, update: CallbackQuery, d
         admin_id = int(data.split('_')[2])
         await show_admin_settings(bot, admin_id, update)
 
-# تابع ارسال پیام همگانی
 async def start_broadcast(bot: Client, message: Message, broadcast_message: Message):
     """شروع ارسال پیام همگانی"""
     user_id = message.from_user.id
@@ -640,15 +643,6 @@ async def start_broadcast(bot: Client, message: Message, broadcast_message: Mess
         done = 0
         failed = 0
         success = 0
-        
-        # ذخیره اطلاعات برادکست
-        broadcast_id = int(time.time() * 1000)
-        broadcast_ids[broadcast_id] = {
-            'total': total_users,
-            'done': done,
-            'failed': failed,
-            'success': success
-        }
         
         # ارسال پیام به کاربران
         for user in all_users:
