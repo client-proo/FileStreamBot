@@ -10,6 +10,7 @@ from pyrogram import idle
 from FileStream.bot import FileStream
 from FileStream.server import web_server
 from FileStream.bot.clients import initialize_clients
+from FileStream.bot.plugins.admin import is_bot_active
 
 logging.basicConfig(
     level=logging.INFO,
