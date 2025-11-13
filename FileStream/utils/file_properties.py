@@ -3,6 +3,8 @@ import logging
 from datetime import datetime
 from pyrogram import Client
 from typing import Any, Optional
+from jdatetime import datetime as jdatetime
+import pytz
 
 from pyrogram.enums import ParseMode, ChatType
 from pyrogram.types import Message
@@ -130,15 +132,24 @@ async def send_file(client: Client, db_id, file_id: str, message):
     log_msg = await client.send_cached_media(chat_id=Telegram.FLOG_CHANNEL, file_id=file_id,
                                              caption=f'**{file_caption}**')
 
+    # محاسبه تاریخ و زمان انقضا
+    file_info = await db.get_file(db_id)
+    create_time = file_info['time']
+    expire_time = create_time + Telegram.EXPIRE_TIME
+    
+    # تاریخ شمسی انقضا (به وقت ایران)
+    tz_iran = pytz.timezone('Asia/Tehran')
+    expire_dt = datetime.fromtimestamp(expire_time, tz_iran)
+    expire_jalali = jdatetime.fromgregorian(datetime=expire_dt).strftime('%Y/%m/%d - %H:%M:%S')
+
     if message.chat.type == ChatType.PRIVATE:
         await log_msg.reply_text(
-            text=f"**👤 نام کاربر :** [{message.from_user.first_name}](tg://user?id={message.from_user.id})\n**🆔 آیدی کاربر :** `{message.from_user.id}`\n**🔑 آیدی فایل :** `{db_id}`",
+            text=f"**👤 نام کاربر :** [{message.from_user.first_name}](tg://user?id={message.from_user.id})\n**🆔 آیدی کاربر :** `{message.from_user.id}`\n**🔑 آیدی فایل :** `{db_id}`\n**⏰ تاریخ انقضا :** `{expire_jalali}`",
             disable_web_page_preview=True, parse_mode=ParseMode.MARKDOWN, quote=True)
     else:
         await log_msg.reply_text(
-            text=f"**👤 نام کاربر :** {message.chat.title} \n**🆔 آیدی کانال :** `{message.chat.id}`\n**🔑 آیدی فایل :** `{db_id}`",
+            text=f"**👤 نام کاربر :** {message.chat.title} \n**🆔 آیدی کانال :** `{message.chat.id}`\n**🔑 آیدی فایل :** `{db_id}`\n**⏰ تاریخ انقضا :** `{expire_jalali}`",
             disable_web_page_preview=True, parse_mode=ParseMode.MARKDOWN, quote=True)
 
     return log_msg
     # return await client.send_cached_media(Telegram.BIN_CHANNEL, file_id)
-
