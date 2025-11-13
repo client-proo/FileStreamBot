@@ -9,14 +9,14 @@ from FileStream.config import Telegram
 from FileStream.utils.database import Database
 from FileStream.utils.translation import LANG, BUTTON
 from pyrogram import filters, Client
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, ReplyKeyboardMarkup, KeyboardButton
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from pyrogram.enums.parse_mode import ParseMode
 import asyncio
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
 
-# ایمپورت وضعیت ربات از admin.py در پوشه plugins
-from FileStream.bot.plugins.admin import is_bot_active, ADMIN_KEYBOARD
+# ایمپورت ساده فقط is_bot_active
+from FileStream.bot.plugins.admin import is_bot_active
 
 @FileStream.on_message(filters.command('start') & filters.private)
 async def start(bot: Client, message: Message):
@@ -35,13 +35,22 @@ async def start(bot: Client, message: Message):
     # اگر کاربر ادمین اصلی است، کیبورد ادمین نشان داده شود
     if message.from_user.id == Telegram.OWNER_ID:
         if usr_cmd == "/start":
+            # استفاده از کیبورد ساده برای تست
+            from pyrogram.types import ReplyKeyboardMarkup, KeyboardButton
+            test_keyboard = ReplyKeyboardMarkup(
+                [
+                    [KeyboardButton("📊 مشاهده آمار"), KeyboardButton("⚙️ تنظیمات")],
+                    [KeyboardButton("🔊 ارسال همگانی")]
+                ],
+                resize_keyboard=True
+            )
             await message.reply_text(
-                text="🏠 **صفحه اصلی**\n\n"
-                     "لطفا یکی از گزینه‌های زیر را انتخاب کنید:",
-                reply_markup=ADMIN_KEYBOARD
+                text="🏠 **صفحه اصلی مدیریت**\n\nلطفا یکی از گزینه‌های زیر را انتخاب کنید:",
+                reply_markup=test_keyboard
             )
             return
 
+    # بقیه کد بدون تغییر...
     # پردازش لینک‌های stream_ و file_ برای همه کاربران مجاز
     if usr_cmd != "/start":
         if "stream_" in message.text:
@@ -105,9 +114,9 @@ async def start(bot: Client, message: Message):
             reply_markup=BUTTON.START_BUTTONS
         )
 
+# بقیه توابع بدون تغییر...
 @FileStream.on_message(filters.private & filters.command(["about"]))
 async def about_handler(bot, message):
-    # اگر ربات خاموش است و کاربر عادی است
     if not is_bot_active() and message.from_user.id != Telegram.OWNER_ID:
         await message.reply_text("❌ ربات در حال حاضر غیرفعال است.")
         return
@@ -132,7 +141,6 @@ async def about_handler(bot, message):
 
 @FileStream.on_message((filters.command('help')) & filters.private)
 async def help_handler(bot, message):
-    # اگر ربات خاموش است و کاربر عادی است
     if not is_bot_active() and message.from_user.id != Telegram.OWNER_ID:
         await message.reply_text("❌ ربات در حال حاضر غیرفعال است.")
         return
@@ -156,11 +164,8 @@ async def help_handler(bot, message):
             reply_markup=BUTTON.HELP_BUTTONS
         )
 
-# ---------------------------------------------------------------------------------------------------
-
 @FileStream.on_message(filters.command('files') & filters.private)
 async def my_files(bot: Client, message: Message):
-    # اگر ربات خاموش است و کاربر عادی است
     if not is_bot_active() and message.from_user.id != Telegram.OWNER_ID:
         await message.reply_text("❌ ربات در حال حاضر غیرفعال است.")
         return
@@ -173,7 +178,6 @@ async def my_files(bot: Client, message: Message):
 
     file_list = []
     async for x in user_files:
-        # محاسبه زمان باقی‌مانده برای هر فایل
         create_time = x['time']
         expire_time = create_time + Telegram.EXPIRE_TIME
         remaining_seconds = int(expire_time - time.time())
@@ -183,7 +187,6 @@ async def my_files(bot: Client, message: Message):
         else:
             remaining_text = f"⏰ {seconds_to_hms(remaining_seconds)}"
         
-        # اضافه کردن زمان باقی‌مانده به نام فایل
         file_name = x["file_name"]
         if len(file_name) > 20:
             file_name = file_name[:20] + "..."
@@ -200,9 +203,7 @@ async def my_files(bot: Client, message: Message):
             ],
         )
     if not file_list:
-        file_list.append(
-            [InlineKeyboardButton("📭 خالی", callback_data="N/A")],
-        )
+        file_list.append([InlineKeyboardButton("📭 خالی", callback_data="N/A")])
     file_list.append([InlineKeyboardButton("✖️ بستن", callback_data="close")])
     
     await message.reply_photo(
