@@ -225,6 +225,17 @@ async def is_user_authorized(message):
             )
             return False
 
+    # چک کردن حالت فقط پرمیوم
+    if Telegram.ONLY_PREMIUM:
+        if not await db.is_premium_user(message.from_user.id):
+            await message.reply_text(
+                text="❌ این ربات فقط برای کاربران پرمیوم قابل استفاده است.\n\n"
+                     "💎 برای خرید پرمیوم با پشتیبانی تماس بگیرید.",
+                parse_mode=ParseMode.MARKDOWN,
+                disable_web_page_preview=True
+            )
+            return False
+
     return True
 
 #---------------------[ USER EXIST ]---------------------#
