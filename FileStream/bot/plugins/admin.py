@@ -21,9 +21,12 @@ broadcast_ids = {}
 
 @FileStream.on_message(filters.command("status") & filters.private & filters.user(Telegram.OWNER_ID))
 async def sts(c: Client, m: Message):
+    total_premium = len(await db.get_premium_users())
     await m.reply_text(text=f"""**👥 کل کاربران:** `{await db.total_users_count()}`
+**👑 کاربران پرمیوم:** `{total_premium}`
 **🚫 کاربران مسدود شده:** `{await db.total_banned_users_count()}`
-**🔗 لینک‌های تولید شده: ** `{await db.total_files()}`"""
+**🔗 لینک‌های تولید شده: ** `{await db.total_files()}`
+**🔒 حالت فقط پرمیوم:** `{'فعال ✅' if Telegram.ONLY_PREMIUM else 'غیرفعال ❌'}`"""
                        , parse_mode=ParseMode.MARKDOWN, quote=True)
 
 
@@ -156,3 +159,159 @@ async def sts(c: Client, m: Message):
         quote=True
     )
 
+# ==================== PREMIUM MANAGEMENT ====================
+
+@FileStream.on_message(filters.command("setpremium") & filters.private & filters.user(Telegram.OWNER_ID))
+async def set_premium_handler(bot: Client, message: Message):
+    try:
+        # فرمت دستور: /setpremium user_id seconds
+        parts = message.text.split()
+        if len(parts) != 3:
+            await message.reply_text(
+                "❌ فرمت دستور نادرست است.\n\n"
+                "✅ استفاده صحیح:\n"
+                "`/setpremium user_id seconds`\n\n"
+                "📝 مثال:\n"
+                "`/setpremium 123456789 2592000`\n"
+                "(30 روز پرمیوم)",
+                parse_mode=ParseMode.MARKDOWN,
+                quote=True
+            )
+            return
+
+        user_id = int(parts[1])
+        seconds = int(parts[2])
+
+        # بررسی وجود کاربر
+        user = await db.get_user(user_id)
+        if not user:
+            await message.reply_text(
+                "❌ کاربر در دیتابیس یافت نشد!",
+                quote=True
+            )
+            return
+
+        # تنظیم کاربر به عنوان پرمیوم
+        await db.set_premium_user(user_id, seconds, message.from_user.id)
+        
+        # محاسبه زمان انقضا
+        expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
+        expiry_str = expiry_time.strftime("%Y/%m/%d - %H:%M:%S")
+        
+        await message.reply_text(
+            f"✅ کاربر `{user_id}` با موفقیت پرمیوم شد!\n\n"
+            f"⏰ زمان انقضا: `{expiry_str}`\n"
+            f"⏳ مدت زمان: `{seconds}` ثانیه",
+            parse_mode=ParseMode.MARKDOWN,
+            quote=True
+        )
+
+        # اطلاع به کاربر (اگر امکان داشته باشد)
+        try:
+            await bot.send_message(
+                chat_id=user_id,
+                text=f"🎉 **تبریک! شما اکنون کاربر پرمیوم هستید!**\n\n"
+                     f"⏰ پرمیوم شما تا `{expiry_str}` فعال خواهد بود.",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        except Exception:
+            pass  # اگر نتوانستیم به کاربر پیام بدهیم، مشکلی نیست
+
+    except ValueError:
+        await message.reply_text(
+            "❌ آیدی کاربر یا زمان باید عدد باشد!",
+            quote=True
+        )
+    except Exception as e:
+        await message.reply_text(
+            f"❌ خطا در اجرای دستور: {str(e)}",
+            quote=True
+        )
+
+@FileStream.on_message(filters.command("premiumusers") & filters.private & filters.user(Telegram.OWNER_ID))
+async def premium_users_handler(bot: Client, message: Message):
+    try:
+        premium_users = await db.get_premium_users()
+        
+        if not premium_users:
+            await message.reply_text(
+                "📭 هیچ کاربر پرمیومی وجود ندارد.",
+                quote=True
+            )
+            return
+
+        from FileStream.utils.bot_utils import seconds_to_hms
+        
+        text = "👑 **لیست کاربران پرمیوم:**\n\n"
+        
+        for user in premium_users:
+            user_id = user['id']
+            expiry_time = user['premium_expiry']
+            added_by = user.get('premium_added_by', 'نامشخص')
+            
+            # تبدیل زمان به فرمت خوانا
+            expiry_date = datetime.datetime.fromtimestamp(expiry_time).strftime("%Y/%m/%d - %H:%M:%S")
+            
+            # محاسبه زمان باقی‌مانده
+            remaining = expiry_time - time.time()
+            remaining_readable = seconds_to_hms(int(remaining))
+            
+            text += f"🆔 کاربر: `{user_id}`\n"
+            text += f"⏰ انقضا: `{expiry_date}`\n"
+            text += f"⏳ باقی‌مانده: `{remaining_readable}`\n"
+            text += f"👤 اضافه شده توسط: `{added_by}`\n"
+            text += "─" * 30 + "\n"
+
+        await message.reply_text(
+            text,
+            parse_mode=ParseMode.MARKDOWN,
+            quote=True
+        )
+
+    except Exception as e:
+        await message.reply_text(
+            f"❌ خطا در دریافت لیست کاربران پرمیوم: {str(e)}",
+            quote=True
+        )
+
+@FileStream.on_message(filters.command("onlypremium") & filters.private & filters.user(Telegram.OWNER_ID))
+async def only_premium_handler(bot: Client, message: Message):
+    try:
+        parts = message.text.split()
+        if len(parts) != 2:
+            await message.reply_text(
+                "❌ فرمت دستور نادرست است.\n\n"
+                "✅ استفاده صحیح:\n"
+                "`/onlypremium on` - فعال کردن حالت فقط پرمیوم\n"
+                "`/onlypremium off` - غیرفعال کردن حالت فقط پرمیوم",
+                parse_mode=ParseMode.MARKDOWN,
+                quote=True
+            )
+            return
+
+        mode = parts[1].lower()
+        if mode in ['on', 'true', '1']:
+            Telegram.ONLY_PREMIUM = True
+            status = "فعال ✅"
+        elif mode in ['off', 'false', '0']:
+            Telegram.ONLY_PREMIUM = False
+            status = "غیرفعال ❌"
+        else:
+            await message.reply_text(
+                "❌ حالت نامعتبر! از 'on' یا 'off' استفاده کنید.",
+                quote=True
+            )
+            return
+
+        await message.reply_text(
+            f"✅ حالت 'فقط پرمیوم' {status} شد.\n\n"
+            f"📊 کاربران پرمیوم فعال: `{len(await db.get_premium_users())}` نفر",
+            parse_mode=ParseMode.MARKDOWN,
+            quote=True
+        )
+
+    except Exception as e:
+        await message.reply_text(
+            f"❌ خطا در تغییر حالت: {str(e)}",
+            quote=True
+        )
