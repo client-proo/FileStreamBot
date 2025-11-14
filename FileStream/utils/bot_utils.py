@@ -28,9 +28,9 @@ async def get_invite_link(bot, chat_id: Union[str, int]):
 
 async def is_user_joined(bot, message: Message):
     if Telegram.FORCE_SUB_ID and Telegram.FORCE_SUB_ID.startswith("-100"):
-        channel_chat_id = int(Telegram.FORCE_SUB_ID)
+        channel_chat_id = int(Telegram.FORCE_SUB_ID)    # When id startswith with -100
     elif Telegram.FORCE_SUB_ID and (not Telegram.FORCE_SUB_ID.startswith("-100")):
-        channel_chat_id = Telegram.FORCE_SUB_ID
+        channel_chat_id = Telegram.FORCE_SUB_ID     # When id not startswith -100
     else:
         return 200
     try:
@@ -80,7 +80,7 @@ async def is_user_joined(bot, message: Message):
         return False
     return True
 
-#---------------------[ TIME CONVERSION FUNCTIONS ]---------------------#
+#---------------------[ PRIVATE GEN LINK + CALLBACK ]---------------------#
 
 def seconds_to_hms(seconds: int) -> str:
     """تبدیل ثانیه به فرمت خوانا: X ساعت Y دقیقه Z ثانیه"""
@@ -102,17 +102,11 @@ def seconds_to_hms(seconds: int) -> str:
     return " و ".join(parts)
 
 def seconds_to_detailed(seconds: int) -> str:
-    """تبدیل ثانیه به فرمت دقیق: سال، ماه، روز، ساعت، دقیقه، ثانیه"""
+    """تبدیل ثانیه به فرمت دقیق: روز، ساعت، دقیقه، ثانیه"""
     if seconds <= 0:
         return "0 ثانیه"
     
     # محاسبه واحدهای زمانی
-    years = seconds // (365 * 24 * 3600)
-    seconds %= (365 * 24 * 3600)
-    
-    months = seconds // (30 * 24 * 3600)
-    seconds %= (30 * 24 * 3600)
-    
     days = seconds // (24 * 3600)
     seconds %= (24 * 3600)
     
@@ -123,10 +117,6 @@ def seconds_to_detailed(seconds: int) -> str:
     seconds %= 60
     
     parts = []
-    if years > 0:
-        parts.append(f"{years} سال")
-    if months > 0:
-        parts.append(f"{months} ماه")
     if days > 0:
         parts.append(f"{days} روز")
     if hours > 0:
@@ -137,8 +127,6 @@ def seconds_to_detailed(seconds: int) -> str:
         parts.append(f"{seconds} ثانیه")
     
     return " و ".join(parts)
-
-#---------------------[ PRIVATE GEN LINK + CALLBACK ]---------------------#
 
 async def gen_link(_id):
     try:
@@ -259,17 +247,6 @@ async def is_user_authorized(message):
         if not (user_id in Telegram.AUTH_USERS):
             await message.reply_text(
                 text="شما مجاز به استفاده از این ربات نیستید.",
-                parse_mode=ParseMode.MARKDOWN,
-                disable_web_page_preview=True
-            )
-            return False
-
-    # چک کردن حالت فقط پرمیوم
-    if Telegram.ONLY_PREMIUM:
-        if not await db.is_premium_user(message.from_user.id):
-            await message.reply_text(
-                text="❌ این ربات فقط برای کاربران پرمیوم قابل استفاده است.\n\n"
-                     "💎 برای خرید پرمیوم با پشتیبانی تماس بگیرید.",
                 parse_mode=ParseMode.MARKDOWN,
                 disable_web_page_preview=True
             )
