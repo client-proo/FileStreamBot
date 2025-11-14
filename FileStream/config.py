@@ -27,7 +27,7 @@ class Telegram:
     AUTH_USERS = list(set(int(x) for x in str(env.get("AUTH_USERS", "")).split()))
     EXPIRE_TIME = int(env.get("EXPIRE_TIME", 3600))  # پیش‌فرض 1 ساعت (به ثانیه)
     ANTI_SPAM_TIME = int(env.get("ANTI_SPAM_TIME", 60))  # پیش‌فرض 1 دقیقه (به ثانیه)
-ONLY_PREMIUM = env.get('ONLY_PREMIUM', False)
+    ONLY_PREMIUM = env.get('ONLY_PREMIUM', False)
     ONLY_PREMIUM = True if str(ONLY_PREMIUM).lower() == "true" else False
 
 class Server:
