@@ -28,9 +28,9 @@ async def get_invite_link(bot, chat_id: Union[str, int]):
 
 async def is_user_joined(bot, message: Message):
     if Telegram.FORCE_SUB_ID and Telegram.FORCE_SUB_ID.startswith("-100"):
-        channel_chat_id = int(Telegram.FORCE_SUB_ID)    # When id startswith with -100
+        channel_chat_id = int(Telegram.FORCE_SUB_ID)
     elif Telegram.FORCE_SUB_ID and (not Telegram.FORCE_SUB_ID.startswith("-100")):
-        channel_chat_id = Telegram.FORCE_SUB_ID     # When id not startswith -100
+        channel_chat_id = Telegram.FORCE_SUB_ID
     else:
         return 200
     try:
@@ -80,7 +80,7 @@ async def is_user_joined(bot, message: Message):
         return False
     return True
 
-#---------------------[ PRIVATE GEN LINK + CALLBACK ]---------------------#
+#---------------------[ TIME CONVERSION FUNCTIONS ]---------------------#
 
 def seconds_to_hms(seconds: int) -> str:
     """تبدیل ثانیه به فرمت خوانا: X ساعت Y دقیقه Z ثانیه"""
@@ -127,6 +127,41 @@ def seconds_to_detailed(seconds: int) -> str:
         parts.append(f"{seconds} ثانیه")
     
     return " و ".join(parts)
+
+async def check_file_size_limit(message: Message, file_size: int) -> bool:
+    """بررسی محدودیت حجم فایل برای کاربر"""
+    user_id = message.from_user.id
+    
+    # اگر کاربر پرمیوم است
+    if await db.is_premium_user(user_id):
+        max_size = Telegram.PREMIUM_USER_MAX_SIZE
+        user_type = "پرمیوم"
+    else:
+        max_size = Telegram.FREE_USER_MAX_SIZE
+        user_type = "رایگان"
+    
+    # اگر محدودیت 0 باشد یعنی نامحدود
+    if max_size == 0:
+        return True
+    
+    # بررسی حجم فایل
+    if file_size > max_size:
+        max_size_readable = humanbytes(max_size)
+        file_size_readable = humanbytes(file_size)
+        await message.reply_text(
+            f"❌ **حجم فایل بیش از حد مجاز است!**\n\n"
+            f"👤 **نوع حساب:** {user_type}\n"
+            f"📦 **حداکثر حجم مجاز:** {max_size_readable}\n"
+            f"📁 **حجم فایل شما:** {file_size_readable}\n\n"
+            f"💡 لطفاً فایل با حجم کمتر آپلود کنید.",
+            parse_mode=ParseMode.MARKDOWN,
+            quote=True
+        )
+        return False
+    
+    return True
+
+#---------------------[ PRIVATE GEN LINK + CALLBACK ]---------------------#
 
 async def gen_link(_id):
     try:
@@ -247,6 +282,17 @@ async def is_user_authorized(message):
         if not (user_id in Telegram.AUTH_USERS):
             await message.reply_text(
                 text="شما مجاز به استفاده از این ربات نیستید.",
+                parse_mode=ParseMode.MARKDOWN,
+                disable_web_page_preview=True
+            )
+            return False
+
+    # چک کردن حالت فقط پرمیوم
+    if Telegram.ONLY_PREMIUM:
+        if not await db.is_premium_user(message.from_user.id):
+            await message.reply_text(
+                text="❌ این ربات فقط برای کاربران پرمیوم قابل استفاده است.\n\n"
+                     "💎 برای خرید پرمیوم با پشتیبانی تماس بگیرید.",
                 parse_mode=ParseMode.MARKDOWN,
                 disable_web_page_preview=True
             )
