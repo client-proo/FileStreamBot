@@ -1,3 +1,4 @@
+# database.py
 import pymongo
 import time
 import motor.motor_asyncio
@@ -229,37 +230,41 @@ class Database:
         except Exception as e:
             print(f"[CLEANUP ERROR] {e}")
 
-# ==================== PREMIUM USER MANAGEMENT ====================
-async def set_premium_user(self, user_id, expiry_seconds, added_by=None):
-    premium_expiry = time.time() + expiry_seconds
-    await self.col.update_one(
-        {'id': int(user_id)},
-        {'$set': {
+    # ==================== PREMIUM USER MANAGEMENT ====================
+    async def set_premium_user(self, user_id, expiry_seconds, added_by=None):
+        """تنظیم کاربر به عنوان پرمیوم"""
+        premium_expiry = time.time() + expiry_seconds
+        await self.col.update_one(
+            {'id': int(user_id)},
+            {'$set': {
+                'is_premium': True,
+                'premium_expiry': premium_expiry,
+                'premium_added_by': added_by
+            }}
+        )
+
+    async def remove_premium_user(self, user_id):
+        """حذف کاربر از حالت پرمیوم"""
+        await self.col.update_one(
+            {'id': int(user_id)},
+            {'$set': {
+                'is_premium': False,
+                'premium_expiry': 0,
+                'premium_added_by': None
+            }}
+        )
+
+    async def get_premium_users(self):
+        """دریافت لیست کاربران پرمیوم فعال"""
+        cursor = self.col.find({
             'is_premium': True,
-            'premium_expiry': premium_expiry,
-            'premium_added_by': added_by
-        }}
-    )
+            'premium_expiry': {'$gt': time.time()}
+        })
+        return await cursor.to_list(length=None)
 
-async def remove_premium_user(self, user_id):
-    await self.col.update_one(
-        {'id': int(user_id)},
-        {'$set': {
-            'is_premium': False,
-            'premium_expiry': 0,
-            'premium_added_by': None
-        }}
-    )
-
-async def get_premium_users(self):
-    cursor = self.col.find({
-        'is_premium': True,
-        'premium_expiry': {'$gt': time.time()}
-    })
-    return await cursor.to_list(length=None)
-
-async def is_premium_user(self, user_id):
-    user = await self.get_user(user_id)
-    if user and user.get('is_premium') and user.get('premium_expiry', 0) > time.time():
-        return True
-    return False
+    async def is_premium_user(self, user_id):
+        """بررسی اینکه کاربر پرمیوم است یا نه"""
+        user = await self.get_user(user_id)
+        if user and user.get('is_premium') and user.get('premium_expiry', 0) > time.time():
+            return True
+        return False
