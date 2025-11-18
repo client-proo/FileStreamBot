@@ -4,7 +4,7 @@ from FileStream.bot import FileStream, multi_clients
 from FileStream.utils.bot_utils import (
     is_user_banned, is_user_exist, is_user_joined,
     gen_link, is_channel_banned, is_channel_exist,
-    is_user_authorized, seconds_to_hms  # ایمپورت تابع جدید
+    is_user_authorized, seconds_to_hms, check_file_size_limit
 )
 from FileStream.utils.database import Database
 from FileStream.utils.file_properties import get_file_ids, get_file_info
@@ -41,12 +41,19 @@ async def private_receive_handler(bot: Client, message: Message):
         if not await is_user_joined(bot, message):
             return
 
-    file_unique_id = get_file_info(message)['file_unique_id']
+    file_info = get_file_info(message)
+    file_size = file_info['file_size']
+
+    # بررسی محدودیت حجم فایل
+    if not await check_file_size_limit(message, file_size):
+        return
+
+    file_unique_id = file_info['file_unique_id']
 
     # چک ضد تکرار
     is_repeat, remaining_repeat = await db.check_repeat(message.from_user.id, file_unique_id)
     if is_repeat:
-        remaining_readable = seconds_to_hms(remaining_repeat)  # استفاده از تابع جدید
+        remaining_readable = seconds_to_hms(remaining_repeat)
         await message.reply_text(
             f"این فایل هنوز معتبر است! لینک قبلی تا **{remaining_readable}** دیگر فعال است.",
             parse_mode=ParseMode.MARKDOWN,
@@ -57,7 +64,7 @@ async def private_receive_handler(bot: Client, message: Message):
     # چک ضد اسپم
     remaining_spam, is_spam = await db.check_spam(message.from_user.id)
     if is_spam:
-        remaining_readable = seconds_to_hms(int(remaining_spam))  # استفاده از تابع جدید
+        remaining_readable = seconds_to_hms(int(remaining_spam))
         await message.reply_text(
             f"اسپم نکنید! منتظر بمانید **{remaining_readable}**",
             parse_mode=ParseMode.MARKDOWN,
