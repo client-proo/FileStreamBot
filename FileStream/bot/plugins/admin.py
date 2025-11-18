@@ -238,15 +238,39 @@ async def set_premium_handler(bot: Client, message: Message):
         tz_iran = pytz.timezone('Asia/Tehran')
         expiry_time = datetime.datetime.now(tz_iran) + datetime.timedelta(seconds=seconds)
         expiry_jalali = jdatetime.fromgregorian(datetime=expiry_time)
-        expiry_str = expiry_jalali.strftime('%Y/%m/%d - %H:%M:%S')
         
-        from FileStream.utils.bot_utils import seconds_to_hms
-        duration_readable = seconds_to_hms(seconds)
+        # فرمت تاریخ شمسی کامل
+        expiry_date = expiry_jalali.strftime('%Y/%m/%d - %H:%M:%S')
+        year = expiry_jalali.year
+        month = expiry_jalali.month
+        day = expiry_jalali.day
+        hour = expiry_jalali.hour
+        minute = expiry_jalali.minute
+        second = expiry_jalali.second
+        
+        # نام ماه شمسی
+        month_names = {
+            1: "فروردین", 2: "اردیبهشت", 3: "خرداد", 
+            4: "تیر", 5: "مرداد", 6: "شهریور",
+            7: "مهر", 8: "آبان", 9: "آذر",
+            10: "دی", 11: "بهمن", 12: "اسفند"
+        }
+        month_name = month_names.get(month, "نامشخص")
+        
+        from FileStream.utils.bot_utils import seconds_to_detailed
+        duration_readable = seconds_to_detailed(seconds)
         
         await message.reply_text(
             f"✅ **کاربر با موفقیت پرمیوم شد!**\n\n"
             f"👤 **آیدی کاربر:** `{user_id}`\n"
-            f"⏰ **تاریخ انقضا:** `{expiry_str}`\n"
+            f"⏰ **جزئیات تاریخ انقضا:**\n"
+            f"   ├ **سال:** `{year}`\n"
+            f"   ├ **ماه:** `{month_name}`\n"
+            f"   ├ **روز:** `{day}`\n"
+            f"   ├ **ساعت:** `{hour:02d}`\n"
+            f"   ├ **دقیقه:** `{minute:02d}`\n"
+            f"   ├ **ثانیه:** `{second:02d}`\n"
+            f"   └ **فرمت کامل:** `{expiry_date}`\n"
             f"⏳ **مدت زمان:** `{duration_readable}`",
             parse_mode=ParseMode.MARKDOWN,
             quote=True
@@ -259,7 +283,9 @@ async def set_premium_handler(bot: Client, message: Message):
                 chat_id=user_id,
                 text=f"🎉 **تبریک! شما اکنون کاربر پرمیوم هستید!**\n\n"
                      f"👤 **نام:** {user_name}\n"
-                     f"⏰ **پرمیوم شما تا:** `{expiry_str}` فعال خواهد بود.\n"
+                     f"⏰ **پرمیوم شما تا:** `{expiry_date}` فعال خواهد بود.\n"
+                     f"📅 **جزئیات:** سال {year}، ماه {month_name}، روز {day}\n"
+                     f"🕒 **ساعت:** {hour:02d}:{minute:02d}:{second:02d}\n"
                      f"✨ **از امکانات ویژه ربات لذت ببرید!**",
                 parse_mode=ParseMode.MARKDOWN
             )
@@ -269,6 +295,63 @@ async def set_premium_handler(bot: Client, message: Message):
     except ValueError:
         await message.reply_text(
             "❌ آیدی کاربر یا زمان باید عدد باشد!",
+            quote=True
+        )
+    except Exception as e:
+        await message.reply_text(
+            f"❌ خطا در اجرای دستور: {str(e)}",
+            quote=True
+        )
+
+
+@FileStream.on_message(filters.command("unpremium") & filters.private & filters.user(Telegram.OWNER_ID))
+async def unpremium_handler(bot: Client, message: Message):
+    try:
+        parts = message.text.split()
+        if len(parts) != 2:
+            await message.reply_text(
+                "❌ **فرمت دستور نادرست است.**\n\n"
+                "✅ **استفاده صحیح:**\n"
+                "`/unpremium [آیدی کاربر]`\n\n"
+                "📝 **مثال:**\n"
+                "`/unpremium 123456789`",
+                parse_mode=ParseMode.MARKDOWN,
+                quote=True
+            )
+            return
+
+        user_id = int(parts[1])
+
+        user = await db.get_user(user_id)
+        if not user:
+            await message.reply_text(
+                "❌ کاربر در دیتابیس یافت نشد!",
+                quote=True
+            )
+            return
+
+        if not await db.is_premium_user(user_id):
+            await message.reply_text(
+                f"⚠️ کاربر `{user_id}` در حال حاضر پرمیوم نیست.",
+                parse_mode=ParseMode.MARKDOWN,
+                quote=True
+            )
+            return
+
+        # لغو پرمیوم کاربر - بدون ارسال پیام به کاربر
+        await db.remove_premium_user(user_id)
+
+        await message.reply_text(
+            f"✅ **پرمیوم کاربر با موفقیت لغو شد!**\n\n"
+            f"👤 **آیدی کاربر:** `{user_id}`\n"
+            f"📝 **توجه:** به کاربر پیامی ارسال نشد.",
+            parse_mode=ParseMode.MARKDOWN,
+            quote=True
+        )
+
+    except ValueError:
+        await message.reply_text(
+            "❌ آیدی کاربر باید عدد باشد!",
             quote=True
         )
     except Exception as e:
@@ -290,7 +373,7 @@ async def premium_users_handler(bot: Client, message: Message):
             )
             return
 
-        from FileStream.utils.bot_utils import seconds_to_hms
+        from FileStream.utils.bot_utils import seconds_to_detailed
         
         text = "👑 **لیست کاربران پرمیوم**\n\n"
         counter = 1
@@ -310,19 +393,44 @@ async def premium_users_handler(bot: Client, message: Message):
                 full_name = "نامشخص"
                 username = "نامشخص"
             
+            # تبدیل زمان به تاریخ شمسی ایران با جزئیات کامل
             tz_iran = pytz.timezone('Asia/Tehran')
             expiry_dt = datetime.datetime.fromtimestamp(expiry_time, tz_iran)
             expiry_jalali = jdatetime.fromgregorian(datetime=expiry_dt)
+            
+            # فرمت تاریخ شمسی کامل
             expiry_date = expiry_jalali.strftime('%Y/%m/%d - %H:%M:%S')
+            year = expiry_jalali.year
+            month = expiry_jalali.month
+            day = expiry_jalali.day
+            hour = expiry_jalali.hour
+            minute = expiry_jalali.minute
+            second = expiry_jalali.second
+            
+            # نام ماه شمسی
+            month_names = {
+                1: "فروردین", 2: "اردیبهشت", 3: "خرداد", 
+                4: "تیر", 5: "مرداد", 6: "شهریور",
+                7: "مهر", 8: "آبان", 9: "آذر",
+                10: "دی", 11: "بهمن", 12: "اسفند"
+            }
+            month_name = month_names.get(month, "نامشخص")
             
             remaining = expiry_time - time.time()
-            remaining_readable = seconds_to_hms(int(remaining))
+            remaining_readable = seconds_to_detailed(int(remaining))
             
             text += f"**{counter}. 👤 کاربر**\n"
             text += f"   ├ **نام:** {full_name}\n"
             text += f"   ├ **یوزرنیم:** {username}\n"
             text += f"   ├ **آیدی:** `{user_id}`\n"
-            text += f"   ├ **انقضا:** `{expiry_date}`\n"
+            text += f"   ├ **تاریخ انقضا:**\n"
+            text += f"   │   ├ **سال:** `{year}`\n"
+            text += f"   │   ├ **ماه:** `{month_name}`\n"
+            text += f"   │   ├ **روز:** `{day}`\n"
+            text += f"   │   ├ **ساعت:** `{hour:02d}`\n"
+            text += f"   │   ├ **دقیقه:** `{minute:02d}`\n"
+            text += f"   │   └ **ثانیه:** `{second:02d}`\n"
+            text += f"   ├ **فرمت کامل:** `{expiry_date}`\n"
             text += f"   ├ **باقی‌مانده:** `{remaining_readable}`\n"
             text += f"   └ **اضافه شده توسط:** `{added_by}`\n\n"
             
@@ -387,5 +495,89 @@ async def only_premium_handler(bot: Client, message: Message):
     except Exception as e:
         await message.reply_text(
             f"❌ خطا در تغییر حالت: {str(e)}",
+            quote=True
+        )
+
+
+@FileStream.on_message(filters.command("setlimit") & filters.private & filters.user(Telegram.OWNER_ID))
+async def set_limit_handler(bot: Client, message: Message):
+    try:
+        parts = message.text.split()
+        if len(parts) != 3:
+            await message.reply_text(
+                "❌ **فرمت دستور نادرست است.**\n\n"
+                "✅ **استفاده صحیح:**\n"
+                "`/setlimit [نوع کاربر] [حداکثر حجم به مگابایت]`\n\n"
+                "📝 **مثال‌ها:**\n"
+                "`/setlimit free 100` - محدودیت 100 مگابایت برای کاربران رایگان\n"
+                "`/setlimit premium 1024` - محدودیت 1 گیگابایت برای کاربران پرمیوم\n"
+                "`/setlimit free 0` - حذف محدودیت برای کاربران رایگان",
+                parse_mode=ParseMode.MARKDOWN,
+                quote=True
+            )
+            return
+
+        user_type = parts[1].lower()
+        max_size_mb = int(parts[2])
+        max_size_bytes = max_size_mb * 1024 * 1024  # تبدیل به بایت
+
+        if user_type == "free":
+            Telegram.FREE_USER_MAX_SIZE = max_size_bytes
+            type_name = "کاربران رایگان"
+        elif user_type == "premium":
+            Telegram.PREMIUM_USER_MAX_SIZE = max_size_bytes
+            type_name = "کاربران پرمیوم"
+        else:
+            await message.reply_text(
+                "❌ نوع کاربر نامعتبر! از 'free' یا 'premium' استفاده کنید.",
+                quote=True
+            )
+            return
+
+        from FileStream.utils.human_readable import humanbytes
+        max_size_readable = humanbytes(max_size_bytes)
+
+        status = "نامحدود" if max_size_bytes == 0 else max_size_readable
+
+        await message.reply_text(
+            f"✅ **محدودیت حجمی تنظیم شد!**\n\n"
+            f"👤 **نوع کاربر:** {type_name}\n"
+            f"📦 **حداکثر حجم مجاز:** {status}",
+            parse_mode=ParseMode.MARKDOWN,
+            quote=True
+        )
+
+    except ValueError:
+        await message.reply_text(
+            "❌ حجم باید عدد باشد!",
+            quote=True
+        )
+    except Exception as e:
+        await message.reply_text(
+            f"❌ خطا در اجرای دستور: {str(e)}",
+            quote=True
+        )
+
+
+@FileStream.on_message(filters.command("limits") & filters.private & filters.user(Telegram.OWNER_ID))
+async def show_limits_handler(bot: Client, message: Message):
+    try:
+        from FileStream.utils.human_readable import humanbytes
+        
+        free_limit = humanbytes(Telegram.FREE_USER_MAX_SIZE) if Telegram.FREE_USER_MAX_SIZE > 0 else "نامحدود"
+        premium_limit = humanbytes(Telegram.PREMIUM_USER_MAX_SIZE) if Telegram.PREMIUM_USER_MAX_SIZE > 0 else "نامحدود"
+
+        await message.reply_text(
+            f"📊 **محدودیت‌های حجمی فعلی:**\n\n"
+            f"👤 **کاربران رایگان:** {free_limit}\n"
+            f"👑 **کاربران پرمیوم:** {premium_limit}\n\n"
+            f"🔒 **حالت فقط پرمیوم:** `{'فعال ✅' if Telegram.ONLY_PREMIUM else 'غیرفعال ❌'}`",
+            parse_mode=ParseMode.MARKDOWN,
+            quote=True
+        )
+
+    except Exception as e:
+        await message.reply_text(
+            f"❌ خطا در دریافت محدودیت‌ها: {str(e)}",
             quote=True
         )
